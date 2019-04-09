@@ -1,0 +1,170 @@
+:root{
+    --card-title: #868987;
+    --generic-mana: #b1b5b7;
+    --border-black: #1c1c1c;
+    --border-white: #ededef;
+    --card-name: #868987;
+    --artifact-frame-light: #957f6b;
+    --artifact-frame-dark: #7D7062;
+    --artifact-textarea: #c9c3b3;
+    --generic-mana: #b1b5b7;
+    --white-frame-light: #cab9aa;
+    --white-frame-dark: #b9ac9e;
+    --white-textarea: #d6d2d0;
+    --white-mana: #e7e7d7;
+    --blue-frame-light: #5488a0;
+    --blue-frame-dark: #464a70;
+    --blue-textarea: #96c9d9;
+    --blue-mana: #a7d7c4;
+    --black-frame-light: #52595d;
+    --black-frame-dark: #303133;
+    --black-textarea: #cab191;
+    --black-mana: #717777;
+    --red-frame-light: #904045;
+    --red-frame-dark: #7e343a;
+    --red-textarea: #9a6a65;
+    --red-mana: #c79b8a;
+    --green-frame-light: #557266;
+    --green-frame-dark: #41554b;
+    --green-textarea: #6d5b4c;
+    --green-mana: #b3c3a3;
+    --land-frame-light: #a29791;
+    --land-frame-dark: #6e6362;
+    --cardback-leather: #985433;
+    --cardback-frame-light: #806223;
+    --cardback-frame-dark: #473019;
+    --cardback-letters-light: #86b4dc;
+    --cardback-letters-dark: #4f5e97;
+    --cardback-red-pips: #b63e27;
+    --current-frame: var(--artifact-frame-light);
+}
+
+*{
+    margin:0;
+    padding:0;
+    text-decoration: none;
+    color: black;
+}
+
+p{
+    margin: 1em 0;
+}
+
+body{
+    font-family: "Libre Baskerville", serif;
+    font-size: 18px;
+    background-color: var(--cardback-leather);
+    line-height: 1.4em;
+    margin:0;
+}
+
+.center{
+    width: 80%;
+    margin: auto
+}
+
+#navbar {
+    margin: 4rem 0rem 1rem;
+}
+
+#navbar li{
+    border-width: 6px;
+    border-style: solid;
+    border-radius: 8px;
+    display: inline;
+    padding: 6px;
+}
+
+#navbar ul{
+    padding-left:1em;
+}
+
+h1.main-title{
+    font-family: "Inknut Antiqua", serif;
+    font-size: 72px;
+    white-space: nowrap;
+    color: var(--cardback-letters-light);
+    text-shadow: 6px 6px 0px var(--cardback-letters-dark);
+    padding: 40px 0px 0px;
+}
+
+.bb-content{
+    border-color: var(--border-black);
+    border-width: 15px;
+    border-radius: 20px;
+    padding: 0px 20px;
+    border-style: solid;
+    background-color: var(--current-frame);
+}
+
+.bb-content .box{
+    margin: 1em 0 1em;
+    border-width: 15px;
+    border-style: solid;
+    border-radius: 20px;
+    color: var(--border-black);
+    letter-spacing: 0.01em;
+    padding: 1em 2em;
+}
+
+.bb-content h2{
+    font-family: "Cormorant Garamond", serif;
+    font-size: 2em;
+    margin: 1em 0em;
+    color: var(--card-title);
+    text-shadow: 0.05em 0.05em var(--border-black), -0.05em 0 var(--generic-mana);
+}
+
+.white-frame{
+    --current-frame: var(--white-frame-light);
+}
+.white-frame .box,
+.card-alternator:nth-of-type(6n+2),
+.card-white{
+    border-color: var(--white-frame-dark);
+    background-color: var(--white-textarea);
+}
+
+.blue-frame{
+    --current-frame: var(--blue-frame-light);
+}
+.blue-frame .box,
+.card-alternator:nth-of-type(6n+3),
+.card-blue{
+    border-color: var(--blue-frame-dark);
+    background-color: var(--blue-textarea);
+}
+
+.black-frame{
+    --current-frame: var(--black-frame-light);
+}
+.black-frame p img,
+.card-alternator:nth-of-type(6n+4),
+.card-black{
+    border-color: var(--black-frame-dark);
+    background-color: var(--black-textarea);
+}
+
+.artifact-frame{
+    --current-frame: var(--artifact-frame-light);
+}
+.artifact-frame .box,
+.card-alternator:nth-of-type(6n+1),
+.card-artifact{
+    border-color: var(--artifact-frame-dark);
+    background-color: var(--artifact-textarea);
+}
+
+
+.card-alternator:nth-of-type(6n+5),
+.card-red{
+    border-color: var(--red-frame-dark);
+    background-color: var(--red-textarea);
+}
+
+.card-alternator:nth-of-type(6n),
+.card-green{
+    border-color: var(--green-frame-dark);
+    background-color: var(--green-textarea);
+}
+
