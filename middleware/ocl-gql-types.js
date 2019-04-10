@@ -1,11 +1,26 @@
 const oclTypes = `
     type Query {
         getEvent(eventName: String): Event
-        getPlayer(playerName: String, discordHandle: String, mtgoHandle: String): Player
+        getPlayer(queryName: String!): Player
     }
     type Mutation {
         createEvent(eventName: String!): Event!
-        createPlayer(playerName: String!): Player!
+        createPlayer(
+            playerInput: PlayerInput!
+        ): Player!
+        addRoster(
+            eventName: String!,
+            playerNames: [String!]!, 
+        ): Event!
+        addDecklist(
+            eventName: String!,
+            playerName: String!,
+            decklist: Decklist!
+        ): Event!
+        addRoundResults(
+            eventName: String!,
+            resultsEntries: [RoundResultInput!]!
+        ): RoundResult
     }
     enum TimeZone {
         PACIFIC
@@ -13,11 +28,20 @@ const oclTypes = `
         EASTERN
         BRITISH
     }
-    type Player {
+    input PlayerInput {
         playerName: String!
-        discordHandle: String
-        mtgoHandle: String
-        timeZone: TimeZone
+        discordHandle: String!
+        mtgoHandle: String!
+        timeZone: TimeZone!
+        email: String
+    }
+    type Player {
+        id: ID!
+        playerName: String!
+        discordHandle: String!
+        mtgoHandle: String!
+        timeZone: TimeZone!
+        email: String
     }
     type Decklist {
         main: [String!]!
@@ -25,16 +49,25 @@ const oclTypes = `
     }
     scalar Date
     type RosterEntry {
-        playerID: ID!
+        playerId: ID!
         decklist: Decklist!
         draftLog: String
         entryPaid: Float
         entryOwed: Float
     }
-    type RoundResult {
-        p1ID: ID!
+    input RoundResultInput {
+        p1QueryName: String!
         p1GameWins: Int!
-        p2ID: ID!
+        p2QueryName: String!
+        p2GameWins: Int!
+        roundNum: Int!
+        matchDate: Date
+    }
+    type RoundResult {
+        id: ID!
+        p1Id: ID!
+        p1GameWins: Int!
+        p2Id: ID!
         p2GameWins: Int!
         roundNum: Int!
         matchDate: Date
@@ -44,6 +77,7 @@ const oclTypes = `
         QP
         FULL
         CASH
+        SPECIAL
     }
     enum RoundType {
         WEEKLY
@@ -58,9 +92,14 @@ const oclTypes = `
         startDate: Date!
         roster: [RosterEntry!]!
         prizeType: PrizeType!
+        prizeSpec: [PrizeSpec!]
         roundType: RoundType!
         tournamentType: TournamentType!
         results: [RoundResult!]!
+    }
+    type PrizeSpec {
+        qps: Int!
+        cash: Float!
     }
 `;
 

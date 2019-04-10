@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Schema.Types.ObjectId;
+const oclEnums = require('ocl-enums');
 
 const oclEventSchema = mongoose.Schema({
     eventName: String,
@@ -22,7 +23,7 @@ const decklistSchema = mongoose.Schema({
 });
 
 const rosterEntrySchema = mongoose.Schema({
-    playerID: ObjectId,
+    playerId: ObjectId,
     decklist: decklistSchema,
     draftLog: String,
     entryPaid: Number,
@@ -30,9 +31,9 @@ const rosterEntrySchema = mongoose.Schema({
 });
 
 const roundResultSchema = mongoose.Schema({
-    p1ID: ObjectId,
+    p1id: ObjectId,
     p1GameWins: Number,
-    p2ID: ObjectId,
+    p2id: ObjectId,
     p2GameWins: Number,
     roundNum: Number,
     matchDate: Date,
@@ -43,6 +44,7 @@ const playerSchema = mongoose.Schema({
     discordHandle: String,
     mtgoHandle: String,
     timeZone: String,
+    email: String,
 })
 
 const OCLEvent = mongoose.model('OCLEvent', oclEventSchema);
@@ -50,33 +52,25 @@ const Player = mongoose.model('Player', playerSchema);
 
 const resolvers = { 
     Query: {
-        getEvent: async (_, { eventName }) => {
-            let p = null;
-            await OCLEvent.findOne({eventName}, (err, res) => {
-                p = res;
-            });
-            return p;
+        getEvent: (_, {eventName}) => {
+            return OCLEvent.findOne({eventName})
         },
-        getPlayer: async (_, {playerName, discordHandle, mtgoHandle}) => {
-            let p = null;
-            await Player.findOne({playerName}, (err, res) => {
-                p = res;
-            });
-            return p;
+        getPlayer: async (_, {queryName}) => {
+            return await Player.findOne({playerName: queryName}) ||
+                await Player.findOne({discordHande: queryName}) ||
+                await Player.findOne({mtgoHandle: queryName});
         },
     },
     Mutation: {
-        createEvent: async (_, { eventName }) => {
+        createEvent: (_, { eventName }) => {s
             let event = new OCLEvent({eventName});
             event.initialize();
-            await event.save();
-            return event;
+            return event.save()
         },
-        createPlayer: async (_, {playerName}) => {
-            let player = new Player({playerName})
-            player.save();
-            return player;
-        }
+        createPlayer: (_, params) => {
+            let player = new Player(params)
+            return player.save()
+        },
     }
 };
 
@@ -86,6 +80,19 @@ function parseEventName(eventName) {
     split = eventName.split('-');
     prizeType = split[0].toUpperCase() || 'ranked';
     roundType = split[1].toUpperCase() || 'weekly';
-    startDate = split[2] || Date();
+    startDate = split[2] || Date(); // String representation of Current Time
+    if (!(prizeType in oclEnums.PrizeType)) {
+        prizeType = 'SPECIAL';
+    };
+
+    if (!(roundType in oclEnums.RountType)) {
+        roundType = 'SPECIAL';
+    };
+
+    startDate = new Date(startDate);
     return {prizeType, roundType, startDate};
+}
+
+function getFullPlayerRecord(playerId) {
+    
 }
