@@ -50,26 +50,7 @@ const playerSchema = mongoose.Schema({
 const OCLEvent = mongoose.model('OCLEvent', oclEventSchema);
 const Player = mongoose.model('Player', playerSchema);
 
-const resolvers = { 
-    Query: {
-        getEvent: (_, {eventName}) => {
-            return OCLEvent.findOne({eventName})
-        },
-    },
-    Mutation: {
-        createEvent: (_, { eventName }) => {s
-            let event = new OCLEvent({eventName});
-            event.initialize();
-            return event.save()
-        },
-        createPlayer: (_, params) => {
-            let player = new Player(params)
-            return player.save()
-        },
-    }
-};
-
-module.exports = resolvers;
+module.exports = { OCLEvent, Player };
 
 function parseEventName(eventName) {
     split = eventName.split('-');
