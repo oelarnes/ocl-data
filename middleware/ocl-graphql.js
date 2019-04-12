@@ -28,8 +28,7 @@ const oclTypes = `
         sideboard: [String!]!
     }
     type Decklist {
-        id: ID!
-        eventId: ID!
+        draftDate: Date!
         playerId: ID!
         matchWins: Int!
         matchLosses: Int!
@@ -52,7 +51,6 @@ const oclTypes = `
         matchDate: Date
     }
     type RoundResult {
-        id: ID!
         p1Id: ID!
         p1GameWins: Int!
         p2Id: ID!
@@ -145,6 +143,15 @@ const oclTypes = `
 
 const resolvers = { 
     Query: {
+        getPlayers: () => {
+            return Player.find({});
+        },
+        getEvents: () => {
+            return OCLEvent.find({});
+        },
+        getDecklists: (_, {eventId}) => {
+            return OCLEvent.findOne({id: eventId}).then(exportDecklists)
+        },
     },
     Mutation: {
         createPlayer: (_, params) => {
@@ -153,7 +160,7 @@ const resolvers = {
         },
         createEvent: (_, { eventName }) => {
             let event = new OCLEvent({eventName});
-            event.initialize();
+            event.fillFromName();
             return event.save()
         },
     }

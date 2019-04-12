@@ -2,20 +2,13 @@ const mongoose = require('mongoose');
 const ObjectId = mongoose.Schema.Types.ObjectId;
 const oclEnums = require('ocl-enums');
 
-const oclEventSchema = mongoose.Schema({
-    eventName: String,
-    startDate: Date,
-    roster: Array,
-    prizeType: String,
-    roundType: String,
-    tournamentType: String,
-    results: Array,
+const playerSchema = mongoose.Schema({
+    playerName: String,
+    discordHandle: String,
+    mtgoHandle: String,
+    timeZone: String,
+    email: String,
 });
-
-oclEventSchema.methods.initialize = function () {
-    this.tournamentType = 'EIGHT_PERSON_BRACKET';
-    Object.assign(this, parseEventName(this.eventName));
-};
 
 const decklistSchema = mongoose.Schema({
     main: Array,
@@ -39,18 +32,52 @@ const roundResultSchema = mongoose.Schema({
     matchDate: Date,
 });
 
-const playerSchema = mongoose.Schema({
-    playerName: String,
-    discordHandle: String,
-    mtgoHandle: String,
-    timeZone: String,
-    email: String,
-})
+const oclEventSchema = mongoose.Schema({
+    eventName: String,
+    startDate: Date,
+    roster: [rosterEntrySchema],
+    prizeType: String,
+    roundType: String,
+    tournamentType: String,
+    results: [roundResultSchema],
+});
+
+oclEventSchema.methods.fillFromName = function () {
+    this.tournamentType = 'EIGHT_PERSON_BRACKET';
+    Object.assign(this, parseEventName(this.eventName));
+};
 
 const OCLEvent = mongoose.model('OCLEvent', oclEventSchema);
 const Player = mongoose.model('Player', playerSchema);
 
-module.exports = { OCLEvent, Player };
+module.exports = {OCLEvent, Player, exportDecklists};
+
+function exportDecklists(oclEvent) {
+    playerResultsMap = oclEvent.results.map(
+        (roundResult) => {
+            let result;
+            if (roundResult.p1GameWins > roundResult.p2GameWins) {
+                result = {winner: roundResult.p1id, loser: roundResult.p2id };
+            } else {
+                result = {winner: roundResult.p2id, loser: roundResult.p1id };
+            }
+            return result;
+        }
+    ).reduce((prev, cur) => {
+        prev.wins[cur.winner] = (prev.wins[cur.winner] || 0) + 1;
+        prev.losses[cur.loser] = (prev.losses[cur.loser] || 0) + 1;
+        return prev;
+    }, {wins:{}, losses:{}});
+
+    decklists = oclEvent.roster.map((rosterEntry) => {
+        list = rosterEntry.decklist;
+        list.playerId = rosterEntry.playerId;
+        list.draftDate = oclEvent.draftDate;
+        list.matchWins = playerResultsMap.wins[list.playerId];
+        list.matchLosses = playerResultsMap.losses[list.playerId];
+    });
+    return decklists;
+}
 
 function parseEventName(eventName) {
     split = eventName.split('-');
@@ -67,8 +94,4 @@ function parseEventName(eventName) {
 
     startDate = new Date(startDate);
     return {prizeType, roundType, startDate};
-}
-
-function getFullPlayerRecord(playerId) {
-    
 }
