@@ -1,4 +1,4 @@
-const {OCLEvent, Player} = require('ocl-data');
+const {OCLEvent, Player, exportDecklists} = require('./ocl-data');
 
 const oclTypes = `
     scalar Date
@@ -143,26 +143,13 @@ const oclTypes = `
 
 const resolvers = { 
     Query: {
-        getPlayers: () => {
-            return Player.find({});
-        },
-        getEvents: () => {
-            return OCLEvent.find({});
-        },
-        getDecklists: (_, {eventId}) => {
-            return OCLEvent.findOne({id: eventId}).then(exportDecklists)
-        },
+        getPlayers: () => Player.find({}),
+        getEvents: () => OCLEvent.find({}),
+        getDecklists: (_, {eventId}) => OCLEvent.findOne({id: eventId}).then(exportDecklists),
     },
     Mutation: {
-        createPlayer: (_, params) => {
-            let player = new Player(params)
-            return player.save()
-        },
-        createEvent: (_, { eventName }) => {
-            let event = new OCLEvent({eventName});
-            event.fillFromName();
-            return event.save()
-        },
+        createPlayer: (_, params) => new Player(params).save(),
+        createEvent: (_, {eventName}) => new OCLEvent({eventName}).fillFromName().save(),
     }
 };
 

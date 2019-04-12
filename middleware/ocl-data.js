@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Schema.Types.ObjectId;
-const oclEnums = require('ocl-enums');
+const oclEnums = require('./ocl-enums');
 
 const playerSchema = mongoose.Schema({
     playerName: String,
@@ -45,6 +45,7 @@ const oclEventSchema = mongoose.Schema({
 oclEventSchema.methods.fillFromName = function () {
     this.tournamentType = 'EIGHT_PERSON_BRACKET';
     Object.assign(this, parseEventName(this.eventName));
+    return this;
 };
 
 const OCLEvent = mongoose.model('OCLEvent', oclEventSchema);
@@ -81,14 +82,14 @@ function exportDecklists(oclEvent) {
 
 function parseEventName(eventName) {
     split = eventName.split('-');
-    prizeType = split[0].toUpperCase() || 'ranked';
-    roundType = split[1].toUpperCase() || 'weekly';
+    prizeType = split[0].toUpperCase();
+    roundType = split[1].toUpperCase();
     startDate = split[2] || Date(); // String representation of Current Time
-    if (!(prizeType in oclEnums.PrizeType)) {
+    if (!oclEnums.PrizeType.includes(prizeType)) {
         prizeType = 'SPECIAL';
     };
 
-    if (!(roundType in oclEnums.RountType)) {
+    if (!oclEnums.RoundType.includes(roundType)) {
         roundType = 'SPECIAL';
     };
 

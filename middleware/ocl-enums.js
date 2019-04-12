@@ -1,4 +1,4 @@
-module.exorts = {
+module.exports = {
     TimeZone: [
         'PACIFIC',
         'CENTRAL',
