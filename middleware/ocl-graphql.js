@@ -1,4 +1,4 @@
-const {OCLEvent, Player, exportDecklists} = require('./ocl-data');
+const {OCLEvent, Player, exportDecklists, updateEvent} = require('./ocl-data');
 
 const oclTypes = `
     scalar Date
@@ -150,6 +150,7 @@ const resolvers = {
     Mutation: {
         createPlayer: (_, params) => new Player(params).save(),
         createEvent: (_, {eventName}) => new OCLEvent({eventName}).fillFromName().save(),
+        updateEvent: (_, {eventId, eventInput}) => updateEvent(eventId, eventInput),
     }
 };
 

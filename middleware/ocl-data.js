@@ -3,8 +3,14 @@ const ObjectId = mongoose.Schema.Types.ObjectId;
 const oclEnums = require('./ocl-enums');
 
 const playerSchema = mongoose.Schema({
-    playerName: String,
-    discordHandle: String,
+    playerName: {
+        type: String,
+        required: true,
+    },
+    discordHandle: {
+        type: String,
+        required: true,
+    },
     mtgoHandle: String,
     timeZone: String,
     email: String,
@@ -45,15 +51,20 @@ const oclEventSchema = mongoose.Schema({
 oclEventSchema.methods.fillFromName = function () {
     this.tournamentType = 'EIGHT_PERSON_BRACKET';
     Object.assign(this, parseEventName(this.eventName));
+    console.log(this);
     return this;
 };
 
 const OCLEvent = mongoose.model('OCLEvent', oclEventSchema);
 const Player = mongoose.model('Player', playerSchema);
 
-module.exports = {OCLEvent, Player, exportDecklists};
+module.exports = {OCLEvent, Player, exportDecklists, updateEvent};
 
 function exportDecklists(oclEvent) {
+    if (!oclEvent) {
+        return [];
+    }
+
     playerResultsMap = oclEvent.results.map(
         (roundResult) => {
             let result;
@@ -95,4 +106,10 @@ function parseEventName(eventName) {
 
     startDate = new Date(startDate);
     return {prizeType, roundType, startDate};
+}
+
+function updateEvent(eventId, eventInput) {
+    return OCLEvent.findOne({id: eventId}).then(
+        (event) => {Object.assign(event, eventInput)}
+    )
 }
