@@ -1,7 +1,10 @@
-const express = require('express');
+const { GraphQLServer } = require('graphql-yoga');
+const {typeDefs, resolvers} = require('./lib/ocl-graphql.js');
 
-const port = 3000;
-const app = express();
+const mongoose = require('mongoose');
+mongoose.connect("mongodb://localhost/ocl-test");
 
-app.use(express.static('public'))
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+const server = new GraphQLServer({typeDefs, resolvers});
+mongoose.connection.once('open', () => {
+    server.start(() => console.log('OCL GraphQL Server is running on localhost:4000')) 
+})

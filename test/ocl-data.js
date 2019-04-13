@@ -1,10 +1,9 @@
-const {OCLEvent, Player, exportDecklists, updateEvent} = require('../middleware/ocl-data');
+const {OCLEvent, Player, exportDecklists, updateEvent} = require('../lib/ocl-data');
 const expect = require('chai').expect;
 
 describe('OCLEvent', () => {
     let eventName = 'qp-weekly-1Jan20';
     let event = new OCLEvent({eventName: eventName}).fillFromName();
-    console.log(event);
 
     describe('Basic features', () => {
         it('should have the given name', () => {
