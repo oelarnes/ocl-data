@@ -1,0 +1,31 @@
+OCL App!
+
+This is the data backend. It will define a GraphQL interface for information on OCL records. 
+
+Try
+
+npm install
+npm start
+
+then open a server on localhost:4000
+
+feature roadmap:
+
+*GQL interface implementing Player and Event operations
+*Embed interface fully into React frontend with OCL styling
+*Make OSI
+*Make mobile-friendly
+*Membership-based authentication
+*Embed dr4ft into OCL app
+*Model cube list in OCL app
+*Hook dr4ft results fully to OCL data model
+    *Event creation
+    *Player selection/creation
+    *Event update with draft lists
+    *decklist submission
+    *Pairings creation and updating
+    *results input
+    *Card versions
+*Player view, results history, draft stats, favorite cards etc.
+*Standings view
+*Event view

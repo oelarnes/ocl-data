@@ -1,5 +1,5 @@
 const { GraphQLServer } = require('graphql-yoga');
-const {typeDefs, resolvers} = require('./lib/ocl-graphql.js');
+const {typeDefs, resolvers} = require('./lib/gql-schema.js');
 
 const mongoose = require('mongoose');
 mongoose.connect("mongodb://localhost/ocl-test");
