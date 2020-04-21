@@ -1,1 +1,0 @@
-cube_list = require('./cube-list.json');
