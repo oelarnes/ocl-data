@@ -109,6 +109,7 @@ data
 # compiled ts
 *.js.map
 src/*.js
+index.js
 *.d.ts
 *.d.ts.map
 

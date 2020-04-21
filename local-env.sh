@@ -1,2 +1,6 @@
+#!/bin/bash
+mkdir -p data
+mkdir -p google-auth
 export PATH="./node_modules/.bin:${PATH}"
-export SQLITE3="/home/oelarnes/projects/ocl-sql/data/ocl-data-dev.db"
+export SQLITE3="./data/ocl-data-dev.db"
+touch $SQLITE3
