@@ -32,6 +32,42 @@ const resolvers = {
         eventEntries(parent: any, {after, howMany, asc=true}: any) {
             const orderDirection = asc ? 'ASC' : 'DESC';
             return select_entries_by('player', parent.id, howMany, after, orderDirection)
+        },
+        qps(parent: any, {season}: any) {
+            if (parent.qps !== undefined && parent.season !== undefined) {
+                return parent.qps;
+            }
+            return get_qps(parent.id, season)
+        }
+    },
+    OCLEvent: {
+        playerEntries(parent: any, {}: any) {
+            return select_entries_by('event', parent.id, undefined, undefined, undefined)
+        }
+    },
+    Entry: {
+        player(parent: any, args: any) {
+            return select_one_by_id('player', parent.playerId)
+        },
+        event(parent: any, args: any) {
+            return select_one_by_id('event', parent.eventId)
+        }
+    },
+    Pairing: {
+        opponentId(parent: any, args: any) {
+            return parent.asPlayerId === undefined ? undefined : (
+                parent.asPlayerId === parent.p1Id ? parent.p2Id : parent.p1Id
+            );
+        },
+        asPlayerGameWins(parent: any, args: any) {
+            return parent.asPlayerId === undefined ? undefined : (
+                parent.asPlayerId === parent.p1Id ? parent.p1GameWins : parent.p2GameWins
+            );
+        },
+        opponentGameWins(parent: any, args: any) {
+            return parent.asPlayerId === undefined ? undefined : (
+                parent.asPlayerId === parent.p1Id ? parent.p2GameWins : parent.p1GameWins
+            );
         }
     }
 }
@@ -59,12 +95,7 @@ const Player = new GraphQLObjectType({
             args: {
                 season: {type: GraphQLString}
             },
-            resolve(parent: any, {season}: any) {
-                if (parent.qps !== undefined && parent.season !== undefined) {
-                    return parent.qps;
-                }
-                return get_qps(parent.id, season)
-            }
+            resolve: resolvers.Player.qps
         }
     })
 }) as any;
@@ -80,9 +111,7 @@ const OCLEvent = new GraphQLObjectType({
         draftDate: {type: GraphQLString},
         playerEntries: {
             type: new GraphQLList(Entry),
-            resolve(parent: any, {}: any) {
-                return select_entries_by('event', parent.id, undefined, undefined, undefined)
-            }
+            resolve: resolvers.OCLEvent.playerEntries
         }
     })
 }) as any;
@@ -94,15 +123,11 @@ const Entry = new GraphQLObjectType({
         eventId: {type: GraphQLString},
         player: {
             type: Player,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('player', parent.playerId)
-            }         
+            resolve: resolvers.Entry.player  
         },
         event: {
             type: OCLEvent,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('event', parent.eventId)
-            }
+            resolve: resolvers.Entry.event
         },
         seatNum: {type: GraphQLInt},
         finalPosition: {type: GraphQLInt},
@@ -114,67 +139,6 @@ const Entry = new GraphQLObjectType({
     })
 }) as any;
 
-const Pairing = new GraphQLObjectType({
-    name: 'Pairing',
-    fields: () => ({
-        eventId: {type: GraphQLString},
-        roundNum: {type: GraphQLInt},
-        tableNum: {type: GraphQLInt},
-        p1Id: {type: GraphQLString},
-        p1: {
-            type: Player,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('player', parent.p1Id)
-            }
-        },
-        p2Id: {type: GraphQLString},
-        p2: {
-            type: Player,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('player', parent.p2Id)
-            }
-        },
-        asPlayerId: {type: GraphQLString},
-        asPlayer: {
-            type: Player,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('player', parent.asPlayerId)
-            }
-        },
-        opponentId: {
-            type: GraphQLString,
-            resolve(parent: any, args: any) {
-                return parent.asPlayerId === undefined ? undefined : (
-                    parent.asPlayerId === parent.p1Id ? parent.p2Id : parent.p1Id
-                );
-            }
-        },
-        opponent: {
-            type: Player,
-            resolve(parent: any, args: any) {
-                return select_one_by_id('player', parent.opponentId)
-            }
-        },
-        p1GameWins: {type: GraphQLInt},
-        p2GameWins: {type: GraphQLInt},
-        asPlayerGameWins: {
-            type: GraphQLInt,
-            resolve(parent: any, args: any) {
-                return parent.asPlayerId === undefined ? undefined : (
-                    parent.asPlayerId === parent.p1Id ? parent.p1GameWins : parent.p2GameWins
-                );
-            }
-        },
-        opponentGameWins: {
-            type: GraphQLInt,
-            resolve(parent: any, args: any) {
-                return parent.asPlayerId === undefined ? undefined : (
-                    parent.asPlayerId === parent.p1Id ? parent.p2GameWins : parent.p1GameWins
-                );
-            }
-        },
-    })
-})
 
 const RootQuery = new GraphQLObjectType({
     name: 'RootQueryType',
