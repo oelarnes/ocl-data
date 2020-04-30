@@ -1,0 +1,77 @@
+type Player {
+    id: ID!
+    fullName: String
+    discordHandle: String
+    discordIdExt: String
+    timeZone: String
+    email: String
+    eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
+    standing(season: String): Standing
+}
+type Standing {
+    playerId: ID!
+    season: String!
+    player: Player!
+    qps: Int
+    matchWins: Int
+    matchLosses: Int
+    allTimeRank: Int
+    rank: Int
+}
+type OCLEvent {
+    id: ID!
+    prizeType: String
+    cubeId: String
+    season: String
+    completeDate: String
+    draftDate: String
+    playerEntries: [Entry]
+    pairings: [Pairing]
+}
+type Entry {
+    playerId: ID!
+    eventId: ID!
+    player: Player!
+    event: OCLEvent!
+    seatNum: Int!
+    finalPosition: Int
+    qpsAwarded: Int
+    cpsAwarded: Int
+    account: String
+    accountPw: String
+    isOpen: Boolean!
+}
+type Pairing {
+    eventId: ID!
+    roundNum: Int!
+    tableNum: Int!
+    p1Id: ID
+    p2Id: ID
+    p1Entry: Entry
+    p2Entry: Entry
+    p1GameWins: Int
+    p2GameWins: Int
+    p1MatchWin: Boolean
+    p2MatchWin: Boolean
+    asPlayerId: ID
+    asPlayerEntry: Entry
+    opponentId: ID
+    opponentEntry: Entry
+    asPlayerGameWins: Int
+    asPlayerMatchWin: Boolean
+    opponentGameWins: Int
+    opponentMatchWin: Int
+    choosePlayDrawId: ID
+    winnerId: ID
+    loserId: ID
+    winnerEntry: Entry
+    loserEntry: Entry
+}
+
+type RootQuery {
+    player(id: ID!): Player
+    players(howMany: Int, after: String, by: String, asc: Boolean, season: String): [Player]
+    event(id: ID!): OCLEvent
+    events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
+    entry(playerId: ID!, eventId: ID!): Entry
+}

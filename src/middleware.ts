@@ -1,5 +1,40 @@
-import { GraphQLObjectType, GraphQLString, GraphQLSchema, GraphQLInt, GraphQLBoolean, GraphQLList } from 'graphql';
+import { readFileSync } from 'fs';
+
+import graphqlHTTP from 'express-graphql';
+import { buildSchema, GraphQLObjectType, GraphQLString, GraphQLSchema, GraphQLInt, GraphQLBoolean, GraphQLList } from 'graphql';
 import {select_one_by_id, select_entry, select_entries_by, select_some_of_after, get_qps} from './db';
+
+// Initialize a GraphQL schema
+const altSchema = buildSchema(readFileSync('./src/schema.graphql', 'utf-8'));
+
+const resolvers = {
+    RootQuery: {
+        player(_parent: any, {id}: any) {
+            return select_one_by_id('player', id)
+        },
+        players(_parent: any, {howMany, after, by='fullName', asc=true, season}: any): any {
+            const validBy = ['fullName', 'id'];
+            const orderBy = validBy.includes(by) ? by : undefined;
+            return select_some_of_after('player', after, howMany, orderBy, asc ? 'ASC' : 'DESC');
+        },
+        event(_parent: any, {id}: any) {
+            return select_one_by_id('event', id)
+        },
+        events(_parent: any, {after, howMany, asc=true}: any): any {
+            const sortDir = asc ? 'ASC' : 'DESC';
+            return select_some_of_after('event', after, howMany, 'draftDate', sortDir)
+        },
+        entry(_parent: any, {playerId, eventId}: any) {
+            return select_entry(playerId, eventId);
+        }
+    },
+    Player: {
+        eventEntries(parent: any, {after, howMany, asc=true}: any) {
+            const orderDirection = asc ? 'ASC' : 'DESC';
+            return select_entries_by('player', parent.id, howMany, after, orderDirection)
+        }
+    }
+}
 
 const Player = new GraphQLObjectType({
     name: 'Player',
@@ -17,10 +52,7 @@ const Player = new GraphQLObjectType({
                 after: {type: GraphQLString},
                 asc: {type: GraphQLBoolean}
             },
-            resolve(parent: any, {after, howMany, asc=true}: any) {
-                const orderDirection = asc ? 'ASC' : 'DESC';
-                return select_entries_by('player', parent.id, howMany, after, orderDirection)
-            }
+            resolve: resolvers.Player.eventEntries
         },
         qps: {
             type: GraphQLInt,
@@ -28,6 +60,9 @@ const Player = new GraphQLObjectType({
                 season: {type: GraphQLString}
             },
             resolve(parent: any, {season}: any) {
+                if (parent.qps !== undefined && parent.season !== undefined) {
+                    return parent.qps;
+                }
                 return get_qps(parent.id, season)
             }
         }
@@ -147,46 +182,38 @@ const RootQuery = new GraphQLObjectType({
         player: {
             type: Player,
             args: {id: {type: GraphQLString}},
-            resolve(_parent: any, {id}: any) {
-                return select_one_by_id('player', id)
-            }
+            resolve: resolvers.RootQuery.player
         },
         event: {
             type: OCLEvent,
             args: {id: {type: GraphQLString}},
-            resolve(_parent: any, {id}: any) {
-                return select_one_by_id('event', id)
-            }
+            resolve: resolvers.RootQuery.event
         },
         entry: {
             type: Entry,
             args: {playerId: {type: GraphQLString}, eventId: {type: GraphQLString}},
-            resolve(_parent: any, {playerId, eventId}: any) {
-                return select_entry(playerId, eventId);
-            }
+            resolve: resolvers.RootQuery.entry
         },
         players: {
             type: new GraphQLList(Player),
             args: {after: {type: GraphQLString}, howMany: {type: GraphQLInt}, by: {type: GraphQLString}, asc: {type: GraphQLBoolean}},
-            resolve(_parent: any, {after, howMany, by='fullName', asc=true}: any): any {
-                const validBy = ['fullName', 'id'];
-                const orderBy = validBy.includes(by) ? by : undefined;
-                return select_some_of_after('player', after, howMany, orderBy, asc ? 'ASC' : 'DESC');
-            }
+            resolve: resolvers.RootQuery.players
         },
         events: {
             type: new GraphQLList(OCLEvent),
             args: {after: {type: GraphQLString}, howMany: {type: GraphQLInt}, asc: {type: GraphQLBoolean}},
-            resolve(_parent: any, {after, howMany, asc=true}: any): any {
-                const sortDir = asc ? 'ASC' : 'DESC';
-                return select_some_of_after('event', after, howMany, 'draftDate', sortDir)
-            }
+            resolve: resolvers.RootQuery.events
         }
     }
-})
+});
 
 const schema = new GraphQLSchema({
     query: RootQuery
 });
 
-export {schema};
+const middleware = graphqlHTTP({
+    schema,
+    graphiql: true
+})
+
+export { middleware };

@@ -23,7 +23,7 @@ export type PackNum = 1 | 2 | 3;
 export type PickNum = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 export type TableNum = 1 | 2 | 3 | 4;
 export type GameWins = 0 | 1 | 2;
-
+ 
 export enum OCLAccount {
     SOWER = 'OCL_Sower',
     OCL1 = 'OCL1_Balance',

@@ -1,67 +1,15 @@
 import sqlite3 from 'sqlite3';
 import { getDataTable } from './googleapi';
 
+import { queries } from './sqlTemplates';
+
 const Database = sqlite3.Database
 const db_spec = process.env.SQLITE3 || ':memory:';
-
-const init_queries = {
-    drop_player_table: 'DROP TABLE IF EXISTS player;',
-    drop_event_table: 'DROP TABLE IF EXISTS event;',
-    drop_entry_table: 'DROP TABLE IF EXISTS entry;',
-    drop_pairing_table: 'DROP TABLE IF EXISTS pairing;',
-    create_playery_table: `
-    CREATE TABLE IF NOT EXISTS player(
-        id text PRIMARY KEY,
-        fullName text UNIQUE,
-        discordHandle text,
-        discordIdExt text,
-        timeZone text,
-        pronouns text,
-        email text
-    );`,
-    create_event_table:  `
-    CREATE TABLE IF NOT EXISTS event(
-        id text PRIMARY KEY,
-        prizeType text,
-        draftDate text,
-        completeDate text, 
-        cubeId text,
-        season text
-    );`, 
-    create_entry_table: ` 
-    CREATE TABLE IF NOT EXISTS entry(
-        playerId TEXT,
-        eventId TEXT,
-        seatNum INTEGER,
-        account TEXT, 
-        accountPw TEXT, 
-        isOpen BOOLEAN,
-        finalPosition INTEGER,
-        qpsAwarded INTEGER,
-        cpsAwarded INTEGER,
-        PRIMARY KEY(playerId, eventId)
-    );`,
-    create_pairing_table: `
-    CREATE TABLE IF NOT EXISTS pairing(
-        eventId TEXT,
-        roundNum INTEGER,
-        tableNum INTEGER,
-        p1Id TEXT,
-        p2Id TEXT,
-        p1GameWins INTEGER,
-        p2GameWins INTEGER,
-        p1MatchWin INTEGER,
-        p2MatchWin INTEGER,
-        completedDate TEXT,
-        PRIMARY KEY(eventId, roundNum, tableNum)
-    )
-    `
-};
 
 function select_one_by_id(table: string, id: string): Promise<any> {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
-        db.get(`SELECT * FROM ${table} where id = ?`, id, (err: any, row: any) => {
+        db.get(`SELECT * FROM ${table} where id = ?`, id, (err: Error | null, row: object) => {
             if (err) {
                 reject(err);
             }
@@ -71,10 +19,10 @@ function select_one_by_id(table: string, id: string): Promise<any> {
     });
 }
 
-function select_entry(playerId: string, eventId: string): Promise<any> {
+function select_entry(playerId: string, eventId: string): Promise<object> {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
-        db.get(`SELECT * FROM entry where playerId = ? and eventId = ?`, [playerId, eventId], (err: any, row: object) => {
+        db.get(queries.select_entry, {$playerId: playerId, $eventId: eventId}, (err: Error | null, row: object) => {
             if (err) {
                 reject(err);
             }
@@ -174,15 +122,14 @@ function select_some_of_after(
 function get_qps(playerId: string, season: string) {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
-        db.get(`SELECT SUM(entry.qpsAwarded) from entry join event on entry.eventId=event.id 
-            WHERE entry.playerId = ? AND event.season = ?`, [playerId, season], (err, row) => {
+        db.get(queries.select_player_qps, [playerId, season], (err, row) => {
                 if (err) {
                     reject(err);
                 }
                 else {
-                    resolve(row['SUM(entry.qpsAwarded)'] || 0);
+                    resolve(row['qps'] || 0);
                 }
-            }
+            } 
         );
         db.close();
     })
@@ -203,20 +150,21 @@ function replace_statements(tableName: string) : (values: string[][]) => {query:
 }}
 
 async function initialize_db() {
+    console.log(`Connecting to sqlite3 database at ${db_spec}`);
     const db = new Database(db_spec);
     
     await new Promise( (resolve, reject) => {
         db.serialize( () => {
-            db.run(init_queries.drop_event_table)
-                .run(init_queries.drop_player_table)
-                .run(init_queries.drop_entry_table)
-                .run(init_queries.drop_pairing_table)
-                .run(init_queries.create_event_table)
-                .run(init_queries.create_playery_table)
-                .run(init_queries.create_pairing_table)
-                .run(init_queries.create_entry_table, [], (err: any) => {
+            db.run(queries.drop_event_table)
+                .run(queries.drop_player_table)
+                .run(queries.drop_entry_table)
+                .run(queries.drop_pairing_table)
+                .run(queries.create_event_table)
+                .run(queries.create_playery_table)
+                .run(queries.create_pairing_table)
+                .run(queries.create_entry_table, [], (err: any) => {
                     if(err) {
-                        reject(err);
+                        reject(err); 
                     } else {
                         resolve();
                     }           
@@ -237,10 +185,10 @@ async function initialize_db() {
                         })
                    }) 
                 );
-            });
+            }); 
         }));
-    });    
-    
+    });
+     
     db.close()
 }
 
