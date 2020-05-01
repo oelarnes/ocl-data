@@ -66,6 +66,15 @@ const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany;` 
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany;` 
+const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId;`;
+const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum;`;
+const selectPairingsByEntry = `SELECT * FROM pairing WHERE eventId = $eventId AND (p1Id = $playerId or p2Id = $playerId);`;
+const selectPairingsByPlayerPairAsc = `SELECT * FROM pairing 
+    WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate > $after 
+    ORDER BY completedDate ASC LIMIT $howMany;`;
+const selectPairingsByPlayerPairDesc = `SELECT * FROM pairing 
+    WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate < $after 
+    ORDER BY completedDate DESC LIMIT $howMany;`;
 
 export {
     dropPlayerTable,
@@ -88,5 +97,10 @@ export {
     selectEventsDesc,
     selectEntriesByEvent,
     selectEntriesByPlayerAsc,
-    selectEntriesByPlayerDesc
+    selectEntriesByPlayerDesc,
+    selectPairingsByEvent,
+    selectPairingsByEventAndRound,
+    selectPairingsByEntry,
+    selectPairingsByPlayerPairAsc,
+    selectPairingsByPlayerPairDesc
 };

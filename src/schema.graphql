@@ -7,6 +7,7 @@ type Player {
     email: String
     eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
     standing(season: String): Standing
+    pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]
 }
 type Standing {
     playerId: ID!
@@ -26,7 +27,7 @@ type OCLEvent {
     completeDate: String
     draftDate: String
     playerEntries: [Entry]
-    pairings: [Pairing]
+    pairings(roundNum: Int): [Pairing]
 }
 type Entry {
     playerId: ID!
@@ -40,6 +41,7 @@ type Entry {
     account: String
     accountPw: String
     isOpen: Boolean!
+    pairings: [Pairing]
 }
 type Pairing {
     eventId: ID!
