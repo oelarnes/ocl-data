@@ -68,9 +68,9 @@ type Pairing {
     loserEntry: Entry
 }
 
-type RootQuery {
+type Query {
     player(id: ID!): Player
-    players(howMany: Int, after: String, by: String, asc: Boolean, season: String): [Player]
+    players(howMany: Int, after: String, by: String, asc: Boolean): [Player]
     event(id: ID!): OCLEvent
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry
