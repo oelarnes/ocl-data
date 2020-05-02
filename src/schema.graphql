@@ -18,6 +18,7 @@ type Standing {
     matchLosses: Int
     allTimeRank: Int
     rank: Int
+    trophies: Int
 }
 type OCLEvent {
     id: ID!

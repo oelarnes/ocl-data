@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS pairing(
     choosePlayDrawId TEXT,
     p1GameWins INTEGER,
     p2GameWins INTEGER,
+    p1MatchWin INTEGER,
+    p2MatchWin INTEGER,
     completedDate TEXT,
     PRIMARY KEY(eventId, roundNum, tableNum)
 );
@@ -91,9 +93,65 @@ const selectPairingsByPlayerPairAsc = `SELECT * FROM pairing
 const selectPairingsByPlayerPairDesc = `SELECT * FROM pairing 
     WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate < $after 
     ORDER BY completedDate DESC LIMIT $howMany;`;
-const selectStandingsAllTime = `SELECT `;
-const selectStandingsBySeason = `SELECT `;
-
+const selectStandingsAllTime = `SELECT *, rank as allTimeRank FROM (
+    SELECT 
+        ROW_NUMBER () OVER (
+            ORDER BY entries.qps DESC, entries.trophies DESC, (p1.wins + p2.wins) DESC, (p1.losses + p2.losses) ASC
+        ) rank,
+        p1.playerId AS playerId, 
+        (p1.wins + p2.wins) AS matchWins, 
+        (p1.losses + p2.losses) AS matchLosses, 
+        entries.qps AS qps, 
+        entries.trophies AS trophies
+    FROM 
+        (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) as losses FROM pairing GROUP BY p1Id) p1
+    JOIN 
+        (SELECT p2Id AS playerId, SUM(p2MatchWin) AS wins, SUM(p1MatchWin) as losses FROM pairing GROUP BY p2Id) p2
+        ON p2.playerId = p1.playerId
+    JOIN 
+        (SELECT playerId, SUM(qpsAwarded) AS qps, SUM(CASE finalPosition WHEN 1 THEN 1 ELSE 0 END) AS trophies FROM entry GROUP BY playerId) entries
+        ON entries.playerId = p1.playerId
+) t WHERE rank > $after LIMIT $howMany;
+`;
+const selectStandingsBySeason = `SELECT * FROM (
+    SELECT
+        ROW_NUMBER () OVER (
+            ORDER BY entries.qps DESC, (p1.wins + p2.wins) DESC, (p1.losses + p2.losses) ASC, ats.rank ASC
+        ) rank,
+        p1.playerId AS playerId, 
+        (p1.wins + p2.wins) AS matchWins, 
+        (p1.losses + p2.losses) AS matchLosses, 
+        entries.qps AS qps, 
+        entries.trophies AS trophies,
+        ats.rank AS allTimeRank 
+    FROM
+        (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) AS losses FROM pairing
+            JOIN event ON pairing.eventId = event.id WHERE event.season = $season
+            GROUP BY p1Id) p1
+    JOIN
+        (SELECT p2Id AS playerId, SUM(p2MatchWin) AS wins, SUM(p1MatchWin) AS losses FROM pairing
+            JOIN event ON pairing.eventId = event.id WHERE event.season = $season
+            GROUP BY p2Id) p2
+    ON p1.playerId = p2.playerId
+    JOIN (SELECT playerId, SUM(qpsAwarded) AS qps, SUM(CASE finalPosition WHEN 1 THEN 1 ELSE 0 END) AS trophies 
+            FROM entry JOIN event ON entry.eventId = event.id WHERE event.season = $season GROUP BY playerId) entries
+    ON entries.playerId = p1.playerId
+    JOIN (
+        SELECT 
+            ROW_NUMBER () OVER (
+                ORDER BY entries.qps DESC, entries.trophies DESC, (p1.wins + p2.wins) DESC, (p1.losses + p2.losses) ASC
+            ) rank, p1.playerId as playerId
+        FROM 
+            (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) AS losses FROM pairing GROUP BY p1Id) p1
+        JOIN 
+            (SELECT p2Id AS playerId, SUM(p2MatchWin) AS wins, SUM(p1MatchWin) AS losses FROM pairing GROUP BY p2Id) p2
+            ON p2.playerId = p1.playerId
+        JOIN 
+            (SELECT playerId, SUM(qpsAwarded) AS qps, SUM(CASE finalPosition WHEN 1 THEN 1 ELSE 0 END) AS trophies FROM entry GROUP BY playerId) entries
+            ON entries.playerId = p1.playerId
+    ) ats
+    ON ats.playerId = p1.playerId
+) t  WHERE rank > $after LIMIT $howMany;`
 export {
     dropPlayerTable,
     dropEventTable,

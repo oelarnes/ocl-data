@@ -18,7 +18,7 @@ import {
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
     selectStandingsAllTime,
-    selectStandingsBySeason,
+    selectStandingsBySeason
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -71,7 +71,7 @@ const resolvers = {
                 $eventId: eventId,
             });
         },
-        standings(_parent: any, { season, howMany, after }: any) {
+        standings(_parent: any, { season, howMany=MAX_RESULTS, after=0 }: any) {
             const [query, args] = season === undefined ?
                 [selectStandingsAllTime, { $howMany: howMany, $after: after }]
                 :
@@ -134,14 +134,6 @@ const resolvers = {
         p2Entry(parent: any, args: {}) {
             return executeSelectOne(selectEntry, { $playerId: parent.p2Id, $eventId: parent.eventId })
         },
-        p1MatchWin(parent: any, args: {}) {
-            return (parent.p1GameWins === undefined || parent.p2GameWins === undefined || parent.p1GameWins == parent.p2GameWins)
-                ? undefined : parent.p1GameWins > parent.p2GameWins
-        },
-        p2MatchWin(parent: any, args: {}) {
-            return (parent.p1GameWins === undefined || parent.p2GameWins === undefined || parent.p1GameWins == parent.p2GameWins)
-                ? undefined : parent.p2GameWins > parent.p1GameWins
-        },
         opponentId(parent: any, args: any) {
             return parent.asPlayerId === undefined ? undefined : parent.asPlayerId === parent.p1Id ? parent.p2Id : parent.p1Id;
         },
@@ -150,11 +142,11 @@ const resolvers = {
         },
         asPlayerMatchWin(parent: any, args: any) {
             return parent.asPlayerId === undefined ? undefined :
-                parent.asPlayerId == parent.p1Id ? resolvers.Pairing.p1MatchWin(parent, args) : resolvers.Pairing.p2MatchWin(parent, args)
+                parent.asPlayerId == parent.p1Id ? parent.p1MatchWin : parent.p2MatchWin
         },
         opponentMatchWin(parent: any, args: any) {
             return parent.asPlayerId === undefined ? undefined :
-                parent.asPlayerId == parent.p1Id ? resolvers.Pairing.p2MatchWin(parent, args) : resolvers.Pairing.p1MatchWin(parent, args)
+                parent.asPlayerId == parent.p1Id ? parent.p2MatchWin : parent.p1MatchWin;
         },
         opponentGameWins(parent: any, args: any) {
             return parent.asPlayerId === undefined ? undefined : parent.asPlayerId === parent.p1Id ? parent.p2GameWins : parent.p1GameWins;
@@ -168,12 +160,10 @@ const resolvers = {
                 executeSelectOne(selectEntry, { $playerId: resolvers.Pairing.opponentId(parent, args), $eventId: parent.eventId });
         },
         async winnerId(parent: any, args: any) {
-            const p1MatchWin = await resolvers.Pairing.p1MatchWin(parent, args);
-            return p1MatchWin === undefined ? undefined : p1MatchWin ? parent.p1Id : parent.p2Id;
+            return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p1Id : parent.p2Id;
         },
         async loserId(parent: any, args: any) {
-            const p1MatchWin = await resolvers.Pairing.p1MatchWin(parent, args);
-            return p1MatchWin === undefined ? undefined : p1MatchWin ? parent.p2Id : parent.p1Id;
+            return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p2Id : parent.p1Id;
         },
         async winnerEntry(parent: any, args: any) {
             const winnerId = await resolvers.Pairing.winnerId(parent, args);
@@ -184,6 +174,11 @@ const resolvers = {
             return executeSelectOne(selectEntry, { $playerId: loserId, $eventId: parent.eventId });
         },
     },
+    Standing: {
+        player(parent: any, args: any) {
+            return executeSelectOne(selectPlayer, {$playerId: parent.playerId})
+        }
+    }
 };
 
 const schema = makeExecutableSchema({
