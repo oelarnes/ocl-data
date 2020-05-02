@@ -49,6 +49,22 @@ CREATE TABLE IF NOT EXISTS pairing(
     PRIMARY KEY(eventId, roundNum, tableNum)
 );
 `;
+const dropStandingsTable = `
+DROP TABLE IF EXISTS standings
+`;
+
+const createStandingsTable = `
+CREATE TABLE IF NOT EXISTS standings(
+    season TEXT,
+    rank INTEGER,
+    playerId TEXT,
+    qps INTEGER,
+    trophies INTEGER,
+    wins INTEGER,
+    losses INTEGER,
+    PRIMARY KEY(season, rank)
+)
+`
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId;`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId;`;
@@ -75,16 +91,20 @@ const selectPairingsByPlayerPairAsc = `SELECT * FROM pairing
 const selectPairingsByPlayerPairDesc = `SELECT * FROM pairing 
     WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate < $after 
     ORDER BY completedDate DESC LIMIT $howMany;`;
+const selectStandingsAllTime = `SELECT `;
+const selectStandingsBySeason = `SELECT `;
 
 export {
     dropPlayerTable,
     dropEventTable,
     dropEntryTable,
     dropPairingTable,
+    dropStandingsTable,
     createPlayerTable,
     createEventTable,
     createEntryTable,
     createPairingTable,
+    createStandingsTable,
     selectPlayer,
     selectEvent,
     selectEntry,
@@ -102,5 +122,7 @@ export {
     selectPairingsByEventAndRound,
     selectPairingsByEntry,
     selectPairingsByPlayerPairAsc,
-    selectPairingsByPlayerPairDesc
+    selectPairingsByPlayerPairDesc,
+    selectStandingsAllTime,
+    selectStandingsBySeason
 };

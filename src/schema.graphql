@@ -76,4 +76,5 @@ type Query {
     event(id: ID!): OCLEvent
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry
+    standings(season: String): [Standing]
 }

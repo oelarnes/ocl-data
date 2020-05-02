@@ -55,6 +55,13 @@ function replace_statements(tableName: string) : (values: string[][]) => {query:
     }))
 }}
 
+async function populateStandingsTable(db: any): Promise<any> {
+    const seasons = await executeSelectSome('SELECT DISTINCT season FROM event GROUP BY season', {}).then((rows) => rows.season);
+
+    // all-time first
+    const prevStandings = await executeSelectSome("SELECT * FROM standings WHERE season='allTime';", {});
+}
+
 async function initializeDb() {
     console.log(`Connecting to sqlite3 database at ${db_spec}`);
     const db = new Database(db_spec);
@@ -76,25 +83,27 @@ async function initializeDb() {
                     }           
                 })
         });
-    }).then(() => {
-        return Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName: string) => {
-            return getDataTable(tableName).then((values: string[][]) => {
-                return Promise.all(
-                    replace_statements(tableName)(values).map(statement => {
-                        return new Promise((resolve, reject) => {
-                            db.run(statement.query, statement.params, function(err: any) {
-                                if (err) {
-                                    reject(err)
-                                }
-                                resolve()
-                            })
-                        })
-                   }) 
-                );
-            }); 
-        }));
     });
-     
+
+    await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName: string) => {
+        return getDataTable(tableName).then((values: string[][]) => {
+            return Promise.all(
+                replace_statements(tableName)(values).map(statement => {
+                    return new Promise((resolve, reject) => {
+                        db.run(statement.query, statement.params, function(err: any) {
+                            if (err) {
+                                reject(err)
+                            }
+                            resolve()
+                        })
+                    })
+                }) 
+            );
+        }); 
+    }));
+
+    await populateStandingsTable(db);
+    
     db.close()
 }
 

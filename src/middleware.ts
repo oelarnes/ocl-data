@@ -17,6 +17,8 @@ import {
     selectPairingsByPlayerPairAsc,
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
+    selectStandingsAllTime,
+    selectStandingsBySeason,
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -69,6 +71,13 @@ const resolvers = {
                 $eventId: eventId,
             });
         },
+        standings(_parent: any, { season, howMany, after }: any) {
+            const [query, args] = season === undefined ?
+                [selectStandingsAllTime, { $howMany: howMany, $after: after }]
+                :
+                [selectStandingsBySeason, { $season: season, $howMany: howMany, $after: after }];
+            return executeSelectSome(query, args);
+        }
     },
     Player: {
         eventEntries(
