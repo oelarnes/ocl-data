@@ -18,7 +18,9 @@ import {
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
     selectStandingsAllTime,
-    selectStandingsBySeason
+    selectStandingsBySeason,
+    selectStandingForPlayerAllTime,
+    selectStandingForPlayerBySeason
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -104,6 +106,13 @@ const resolvers = {
                     asPlayerId: parent.id
                 }))
             })
+        },
+        standing(parent: any, { season=undefined }: any ) {
+            const [query, args] = season === undefined ? 
+            [selectStandingForPlayerAllTime, { $playerId: parent.id, $howMany: MAX_RESULTS, $after: 0 }]
+            :
+            [selectStandingForPlayerBySeason, { $playerId: parent.id, $season: season, $howMany: MAX_RESULTS, $after: 0 }];
+            return executeSelectOne( query, args )
         }
     },
     OCLEvent: {

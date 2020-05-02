@@ -13,7 +13,7 @@ export enum CubeType {
 
 export enum SeasonTag {
     ALLTIME = 'All-Time',
-    S19 = '2019',
+    S19 = '2019', 
     S20 = '2020'
 } 
 

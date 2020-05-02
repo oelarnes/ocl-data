@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS event(
     prizeType text,
     draftDate text,
     completeDate text, 
-    cubeId text,
+    cubeId text, 
     season text
 );`;
 const createEntryTable= ` 
@@ -51,48 +51,32 @@ CREATE TABLE IF NOT EXISTS pairing(
     PRIMARY KEY(eventId, roundNum, tableNum)
 );
 `;
-const dropStandingsTable = `
-DROP TABLE IF EXISTS standings
-`;
-
-const createStandingsTable = `
-CREATE TABLE IF NOT EXISTS standings(
-    season TEXT,
-    rank INTEGER,
-    playerId TEXT,
-    qps INTEGER,
-    trophies INTEGER,
-    wins INTEGER,
-    losses INTEGER,
-    PRIMARY KEY(season, rank)
-)
-`
 //Select
-const selectPlayer = `SELECT * FROM player WHERE id = $playerId;`;
-const selectEvent = `SELECT * FROM event WHERE id = $eventId;`;
-const selectEntry = `SELECT * FROM entry WHERE eventId = $eventId and playerId = $playerId;`;
-const selectPlayersOrderByIdAsc = `SELECT * FROM player WHERE id > $after ORDER BY id ASC LIMIT $howMany;`;
-const selectPlayersOrderByIdDesc = `SELECT * FROM player WHERE id < $after ORDER BY id DESC LIMIT $howMany;`;
-const selectPlayersOrderByNameAsc = `SELECT * FROM player WHERE fullName > $after ORDER BY fullName ASC LIMIT $howMany;`;
-const selectPlayersOrderByNameDesc = `SELECT * FROM player WHERE fullName < $after ORDER BY fullName DESC LIMIT $howMany;`;
+const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
+const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
+const selectEntry = `SELECT * FROM entry WHERE eventId = $eventId and playerId = $playerId`;
+const selectPlayersOrderByIdAsc = `SELECT * FROM player WHERE id > $after ORDER BY id ASC LIMIT $howMany`;
+const selectPlayersOrderByIdDesc = `SELECT * FROM player WHERE id < $after ORDER BY id DESC LIMIT $howMany`;
+const selectPlayersOrderByNameAsc = `SELECT * FROM player WHERE fullName > $after ORDER BY fullName ASC LIMIT $howMany`;
+const selectPlayersOrderByNameDesc = `SELECT * FROM player WHERE fullName < $after ORDER BY fullName DESC LIMIT $howMany`;
 const selectPlayerQps = `SELECT SUM(entry.qpsAwarded) as qps FROM entry JOIN event ON entry.eventId = event.id
-    WHERE entry.playerId = $playerId AND event.season = $season;`;
-const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany;`;
-const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany;`;
-const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId;`;
+    WHERE entry.playerId = $playerId AND event.season = $season`;
+const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
+const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
+const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId`;
 const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
-    WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany;` 
+    WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany` 
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
-    WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany;` 
-const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId;`;
-const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum;`;
-const selectPairingsByEntry = `SELECT * FROM pairing WHERE eventId = $eventId AND (p1Id = $playerId or p2Id = $playerId);`;
+    WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany` 
+const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId`;
+const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum`;
+const selectPairingsByEntry = `SELECT * FROM pairing WHERE eventId = $eventId AND (p1Id = $playerId or p2Id = $playerId)`;
 const selectPairingsByPlayerPairAsc = `SELECT * FROM pairing 
     WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate > $after 
-    ORDER BY completedDate ASC LIMIT $howMany;`;
+    ORDER BY completedDate ASC LIMIT $howMany`;
 const selectPairingsByPlayerPairDesc = `SELECT * FROM pairing 
     WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate < $after 
-    ORDER BY completedDate DESC LIMIT $howMany;`;
+    ORDER BY completedDate DESC LIMIT $howMany`;
 const selectStandingsAllTime = `SELECT *, rank as allTimeRank FROM (
     SELECT 
         ROW_NUMBER () OVER (
@@ -102,7 +86,8 @@ const selectStandingsAllTime = `SELECT *, rank as allTimeRank FROM (
         (p1.wins + p2.wins) AS matchWins, 
         (p1.losses + p2.losses) AS matchLosses, 
         entries.qps AS qps, 
-        entries.trophies AS trophies
+        entries.trophies AS trophies,
+        'All Time' as season
     FROM 
         (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) as losses FROM pairing GROUP BY p1Id) p1
     JOIN 
@@ -111,7 +96,7 @@ const selectStandingsAllTime = `SELECT *, rank as allTimeRank FROM (
     JOIN 
         (SELECT playerId, SUM(qpsAwarded) AS qps, SUM(CASE finalPosition WHEN 1 THEN 1 ELSE 0 END) AS trophies FROM entry GROUP BY playerId) entries
         ON entries.playerId = p1.playerId
-) t WHERE rank > $after LIMIT $howMany;
+) t WHERE rank > $after LIMIT $howMany
 `;
 const selectStandingsBySeason = `SELECT * FROM (
     SELECT
@@ -123,7 +108,8 @@ const selectStandingsBySeason = `SELECT * FROM (
         (p1.losses + p2.losses) AS matchLosses, 
         entries.qps AS qps, 
         entries.trophies AS trophies,
-        ats.rank AS allTimeRank 
+        ats.rank AS allTimeRank,
+        $season AS season
     FROM
         (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) AS losses FROM pairing
             JOIN event ON pairing.eventId = event.id WHERE event.season = $season
@@ -140,7 +126,7 @@ const selectStandingsBySeason = `SELECT * FROM (
         SELECT 
             ROW_NUMBER () OVER (
                 ORDER BY entries.qps DESC, entries.trophies DESC, (p1.wins + p2.wins) DESC, (p1.losses + p2.losses) ASC
-            ) rank, p1.playerId as playerId
+            ) rank, p1.playerId AS playerId
         FROM 
             (SELECT p1Id AS playerId, SUM(p1MatchWin) AS wins, SUM(p2MatchWin) AS losses FROM pairing GROUP BY p1Id) p1
         JOIN 
@@ -151,18 +137,21 @@ const selectStandingsBySeason = `SELECT * FROM (
             ON entries.playerId = p1.playerId
     ) ats
     ON ats.playerId = p1.playerId
-) t  WHERE rank > $after LIMIT $howMany;`
+) t  WHERE rank > $after LIMIT $howMany`;
+
+const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank 
+    FROM (${selectStandingsAllTime}) s WHERE playerId = $playerId`;
+const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
+    FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
 export {
     dropPlayerTable,
     dropEventTable,
     dropEntryTable,
     dropPairingTable,
-    dropStandingsTable,
     createPlayerTable,
     createEventTable,
     createEntryTable,
     createPairingTable,
-    createStandingsTable,
     selectPlayer,
     selectEvent,
     selectEntry,
@@ -182,5 +171,7 @@ export {
     selectPairingsByPlayerPairAsc,
     selectPairingsByPlayerPairDesc,
     selectStandingsAllTime,
-    selectStandingsBySeason
+    selectStandingsBySeason,
+    selectStandingForPlayerAllTime,
+    selectStandingForPlayerBySeason
 };

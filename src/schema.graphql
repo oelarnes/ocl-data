@@ -54,8 +54,8 @@ type Pairing {
     p2Entry: Entry
     p1GameWins: Int
     p2GameWins: Int
-    p1MatchWin: Boolean
-    p2MatchWin: Boolean
+    p1MatchWin: Int
+    p2MatchWin: Int
     asPlayerId: ID
     asPlayerEntry: Entry
     opponentId: ID
@@ -77,5 +77,5 @@ type Query {
     event(id: ID!): OCLEvent
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry
-    standings(season: String): [Standing]
+    standings(season: String, howMany: Int, after: Int): [Standing]
 }

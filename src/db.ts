@@ -18,7 +18,7 @@ const db_spec = process.env.SQLITE3 || ':memory:';
 function executeSelectOne(query: string, args: any): Promise<any> {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
-        db.get(query, args, (err, row) => {
+        db.get(`${query};`, args, (err, row) => {
             if (err) {
                 reject(err);
             }
@@ -31,7 +31,7 @@ function executeSelectOne(query: string, args: any): Promise<any> {
 function executeSelectSome(query: string, args: any): Promise<any> {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
-        db.all(query, args, (err, rows) => {
+        db.all(`${query};`, args, (err, rows) => {
             if (err) {
                 reject(err);
             }
