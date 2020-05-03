@@ -72,6 +72,8 @@ const selectPlayersOrderByNameAsc = `SELECT * FROM player WHERE fullName > $afte
 const selectPlayersOrderByNameDesc = `SELECT * FROM player WHERE fullName < $after ORDER BY fullName DESC LIMIT $howMany`;
 const selectPlayerQps = `SELECT SUM(entry.qpsAwarded) as qps FROM entry JOIN event ON entry.eventId = event.id
     WHERE entry.playerId = $playerId AND event.season = $season`;
+const selectPlayersByNameSearch = `SELECT * FROM player WHERE fullName like '%' || $byName || '%'`;
+const selectPlayerByHandleSearch = `SELECT * FROM player WHERE discordHandle like '%' || $byHandle || '%'`;
 const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
 const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
 const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId`;
@@ -172,6 +174,8 @@ export {
     selectPlayersOrderByNameAsc,
     selectPlayersOrderByNameDesc,
     selectPlayerQps,
+    selectPlayersByNameSearch,
+    selectPlayerByHandleSearch,
     selectEventsAsc,
     selectEventsDesc,
     selectEntriesByEvent,

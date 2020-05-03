@@ -14,5 +14,5 @@ app.use('/data', middleware);
 
 const server = http.createServer(app);
 
-server.listen(4001);
+server.listen(4001); 
 console.log('GraphQL server started on port %s', (server.address()).port); 

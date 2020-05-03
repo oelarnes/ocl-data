@@ -85,15 +85,16 @@ type Pick {
     ownedDekRow: String
 }
 type Deck {
-    pool: Pick[]
-    main: Pick[]
-    sideboard: Pick[]
+    pool: [Pick]
+    main: [Pick]
+    sideboard: [Pick]
     dekFile: String
 }
 
 type Query {
     player(id: ID!): Player
     players(howMany: Int, after: String, by: String, asc: Boolean): [Player]
+    playerSearch(byName: String, byHandle: String): [Player]
     event(id: ID!): OCLEvent
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry

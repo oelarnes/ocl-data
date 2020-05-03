@@ -54,6 +54,15 @@ const resolvers = {
                 $howMany: howMany,
             });
         },
+        async playerSearch(_parent, { byName, byHandle }) {
+            const byNameResults = await (byName === undefined) ? [] :
+                executeSelectSome(selectPlayersByNameSearch, { $byName: byName }); 
+
+            const byHandleResults = await (byHandle === undefined) ? [] :
+                executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
+
+            return [...byNameResults, ...byHandleResults];
+        },
         event(_parent, { id }) {
             return executeSelectOne(selectEvent, { $eventId: id });
         },
@@ -73,7 +82,7 @@ const resolvers = {
                 $eventId: eventId,
             });
         },
-        standings(_parent, { season, howMany=MAX_RESULTS, after=0 }) {
+        standings(_parent, { season, howMany = MAX_RESULTS, after = 0 }) {
             const [query, args] = season === undefined ?
                 [selectStandingsAllTime, { $howMany: howMany, $after: after }]
                 :
@@ -107,12 +116,12 @@ const resolvers = {
                 }))
             })
         },
-        standing(parent, { season=undefined } ) {
-            const [query, args] = season === undefined ? 
-            [selectStandingForPlayerAllTime, { $playerId: parent.id, $howMany: MAX_RESULTS, $after: 0 }]
-            :
-            [selectStandingForPlayerBySeason, { $playerId: parent.id, $season: season, $howMany: MAX_RESULTS, $after: 0 }];
-            return executeSelectOne( query, args )
+        standing(parent, { season = undefined }) {
+            const [query, args] = season === undefined ?
+                [selectStandingForPlayerAllTime, { $playerId: parent.id, $howMany: MAX_RESULTS, $after: 0 }]
+                :
+                [selectStandingForPlayerBySeason, { $playerId: parent.id, $season: season, $howMany: MAX_RESULTS, $after: 0 }];
+            return executeSelectOne(query, args)
         }
     },
     OCLEvent: {
@@ -185,7 +194,7 @@ const resolvers = {
     },
     Standing: {
         player(parent, args) {
-            return executeSelectOne(selectPlayer, {$playerId: parent.playerId})
+            return executeSelectOne(selectPlayer, { $playerId: parent.playerId })
         }
     }
 };
