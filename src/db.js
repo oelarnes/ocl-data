@@ -41,7 +41,7 @@ function executeSelectSome(query, args) {
     });
 }
 
-function replace_statements(tableName) {
+function replaceStatements(tableName) {
     return function(values) {
         const keys = values[0];
         return values.slice(1).map(row => ({
@@ -81,7 +81,7 @@ async function initializeDb() {
     await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName) => {
         return getDataTable(tableName).then((values) => {
             return Promise.all(
-                replace_statements(tableName)(values).map(statement => {
+                replaceStatements(tableName)(values).map(statement => {
                     return new Promise((resolve, reject) => {
                         db.run(statement.query, statement.params, function(err) {
                             if (err) {
@@ -94,8 +94,6 @@ async function initializeDb() {
             );
         }); 
     }));
-
-    await uploadAllDraftLogs();
 
     db.close()
 }

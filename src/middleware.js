@@ -13,14 +13,17 @@ import {
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntriesByEvent,
+    selectEntryWins,
     selectPairingsByPlayerPairDesc,
     selectPairingsByPlayerPairAsc,
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
+    selectPairingsByEntry,
     selectStandingsAllTime,
     selectStandingsBySeason,
     selectStandingForPlayerAllTime,
-    selectStandingForPlayerBySeason
+    selectStandingForPlayerBySeason,
+    selectEntryLosses
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -96,16 +99,16 @@ const resolvers = {
                 $after: after,
             });
         },
-        pairingsVs(parent, { oppId, howMany = MAX_RESULTS, after, asc = false }) {
+        async pairingsVs(parent, { oppId, howMany = MAX_RESULTS, after, asc = false }) {
             const query = asc ? selectPairingsByPlayerPairAsc : selectPairingsByPlayerPairDesc
             after = getDateAfter(after, asc)
 
-            return executeSelectSome(query, { $playerId: parent.id, $oppId: oppId, $howMany: howMany, $after: after }).then((rows) => {
-                return rows.map((row) => ({
-                    ...row,
-                    asPlayerId: parent.id
-                }))
-            })
+            const rows = await executeSelectSome(query, { $playerId: parent.id, $oppId: oppId, $howMany: howMany, $after: after })
+            
+            return rows.map((row) => ({
+                ...row,
+                asPlayerId: parent.id
+            }));
         },
         standing(parent, { season=undefined } ) {
             const [query, args] = season === undefined ? 
@@ -134,6 +137,21 @@ const resolvers = {
         },
         event(parent, args) {
             return executeSelectOne(selectEvent, { $eventId: parent.eventId });
+        },
+        async pairings(parent, {}) {
+            const pairings = await executeSelectSome(selectPairingsByEntry, { $eventId: parent.eventId, $playerId: parent.playerId });
+            return pairings.map((row) => ({
+                ...row,
+                asPlayerId: parent.playerId
+            }));
+        },
+        async matchWins(parent, {}) {
+            const winsRow = await executeSelectOne(selectEntryWins, {$eventId: parent.eventId, $playerId: parent.playerId});
+            return winsRow?.wins;
+        },
+        async matchLosses(parent, {}) {
+            const lossesRow = await executeSelectOne(selectEntryLosses, {$eventId: parent.eventId, $playerId: parent.playerId});
+            return lossesRow?.losses;
         },
     },
     Pairing: {
@@ -168,19 +186,17 @@ const resolvers = {
             return parent.asPlayerId === undefined ? undefined :
                 executeSelectOne(selectEntry, { $playerId: resolvers.Pairing.opponentId(parent, args), $eventId: parent.eventId });
         },
-        async winnerId(parent, args) {
+        winnerId(parent, args) {
             return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p1Id : parent.p2Id;
         },
-        async loserId(parent, args) {
+        loserId(parent, args) {
             return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p2Id : parent.p1Id;
         },
-        async winnerEntry(parent, args) {
-            const winnerId = await resolvers.Pairing.winnerId(parent, args);
-            return executeSelectOne(selectEntry, { $playerId: winnerId, $eventId: parent.eventId });
+        winnerEntry(parent, args) {
+            return executeSelectOne(selectEntry, { $playerId: resolvers.Pairing.winnerId(parent, args), $eventId: parent.eventId });
         },
-        async loserEntry(parent, args) {
-            const loserId = await resolvers.Pairing.loserId(parent, args);
-            return executeSelectOne(selectEntry, { $playerId: loserId, $eventId: parent.eventId });
+        loserEntry(parent, args) {
+            return executeSelectOne(selectEntry, { $playerId: resolvers.Pairing.loserId(parent, args), $eventId: parent.eventId });
         },
     },
     Standing: {

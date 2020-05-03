@@ -44,6 +44,8 @@ type Entry {
     isOpen: Boolean!
     pairings: [Pairing]
     deck: Deck
+    matchWins: Int
+    matchLosses: Int
 }
 type Pairing {
     eventId: ID!
@@ -75,8 +77,8 @@ type Pick {
     playerId: ID!
     eventId: ID!
     entry: Entry
-    packNum: Int
-    pickNum: Int
+    packNum: Int!
+    pickNum: Int!
     card: String
     otherCardsString: String
     otherCards: [String]
@@ -85,9 +87,9 @@ type Pick {
     ownedDekRow: String
 }
 type Deck {
-    pool: Pick[]
-    main: Pick[]
-    sideboard: Pick[]
+    pool: [Pick]
+    main: [Pick]
+    sideboard: [Pick]
     dekFile: String
 }
 
