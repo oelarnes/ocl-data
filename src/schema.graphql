@@ -54,8 +54,8 @@ type Pairing {
     p2Entry: Entry
     p1GameWins: Int
     p2GameWins: Int
-    p1MatchWin: Int
-    p2MatchWin: Int
+    p1MatchWin: Boolean
+    p2MatchWin: Boolean
     asPlayerId: ID
     asPlayerEntry: Entry
     opponentId: ID
@@ -63,7 +63,7 @@ type Pairing {
     asPlayerGameWins: Int
     asPlayerMatchWin: Boolean
     opponentGameWins: Int
-    opponentMatchWin: Int
+    opponentMatchWin: Boolean
     choosePlayDrawId: ID
     winnerId: ID
     loserId: ID

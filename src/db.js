@@ -48,10 +48,10 @@ function replace_statements(tableName) {
             query: `
             REPLACE INTO 
                 ${tableName}(${keys.join(', ')})
-            VALUES 
-                (${new Array(row.length).fill('?').join(", ")});
+            VALUES  
+                (${new Array(row.length).fill('?').join(", ")}); 
             `,
-            params
+            params: row
     }))
 }}
 
