@@ -81,6 +81,18 @@ const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany` 
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany` 
+const selectEntryWins = `SELECT p1.wins+p2.wins AS wins FROM (
+        SELECT SUM(p1MatchWin) AS wins FROM pairing WHERE p1Id = $playerId and eventId = $eventId
+    ) p1 JOIN (
+        SELECT SUM(p2MatchWin) AS wins FROM pairing WHERE p2Id = $playerId and eventId = $eventId
+    ) p2
+`;
+const selectEntryLosses = `SELECT p1.losses+p2.losses AS losses FROM (
+    SELECT SUM(p1MatchWin) AS losses FROM pairing WHERE p2Id = $playerId and eventId = $eventId
+) p2 JOIN (
+    SELECT SUM(p2MatchWin) AS losses FROM pairing WHERE p1Id = $playerId and eventId = $eventId
+) p1
+`;
 const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId`;
 const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum`;
 const selectPairingsByEntry = `SELECT * FROM pairing WHERE eventId = $eventId AND (p1Id = $playerId or p2Id = $playerId)`;
@@ -181,6 +193,8 @@ export {
     selectEntriesByEvent,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
+    selectEntryWins,
+    selectEntryLosses,
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
     selectPairingsByEntry,
