@@ -24,6 +24,7 @@
     "googleapis": "^39.2.0",
     "graphql": "^15.0.0",
     "graphql-tools": "^5.0.0",
+    "immutable": "^4.0.0-rc.12",
     "sqlite3": "^4.2.0"
   },
   "devDependencies": {

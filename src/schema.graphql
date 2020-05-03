@@ -70,6 +70,18 @@ type Pairing {
     winnerEntry: Entry
     loserEntry: Entry
 }
+type Pick {
+    playerId: ID!
+    eventId: ID!
+    entry: Entry
+    packNum: Int
+    pickNum: Int
+    card: String
+    otherCardsString: String
+    otherCards: [String]
+    isMain: Int
+    poolAsOf: String
+}
 
 type Query {
     player(id: ID!): Player

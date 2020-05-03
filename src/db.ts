@@ -98,8 +98,37 @@ async function initializeDb() {
     db.close()
 }
 
+function insertStatement(tableName: string, dataRow: any): {query: string, args: string[]} {
+    const keys = dataRow.keys();
+    const args = keys.map((k: string) => dataRow[k]);
+
+    const query = `REPLACE INTO 
+        ${tableName}(${keys.join(', ')})
+    VALUES
+        (${new Array(keys.length).fill('?').join(", ")});
+    `;
+
+    return {
+        query,
+        args
+    }
+}
+
+function executeInsertData(tableName: string, dataTable: any[]) {
+    const db = new Database(db_spec);
+
+    db.serialize(() => {
+        dataTable.forEach((row) => {
+            const {query, args} = insertStatement(tableName, row)
+            db.run(query, args);
+        })
+    });
+    db.close();
+}
+
 export {
     executeSelectOne,
     executeSelectSome,
+    executeInsertData,
     initializeDb
 }

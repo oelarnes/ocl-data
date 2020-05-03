@@ -2,6 +2,7 @@ const dropPlayerTable = 'DROP TABLE IF EXISTS player;';
 const dropEventTable = 'DROP TABLE IF EXISTS event;';
 const dropEntryTable = 'DROP TABLE IF EXISTS entry;';
 const dropPairingTable = 'DROP TABLE IF EXISTS pairing;';
+const dropPickTable = 'DROP TABLE IF EXISTS pick;';
 // Create Table
 const createPlayerTable = `
 CREATE TABLE IF NOT EXISTS player(
@@ -51,6 +52,16 @@ CREATE TABLE IF NOT EXISTS pairing(
     PRIMARY KEY(eventId, roundNum, tableNum)
 );
 `;
+const createPickTable = `
+CREATE TABLE IF NOT EXISTS pick(
+    playerId TEXT,
+    eventId TEXT,
+    packNum INT,
+    pickNum INT,
+    card TEXT,
+    otherCardsString TEXT,
+    isMain INT
+)`
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
@@ -143,6 +154,7 @@ const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matc
     FROM (${selectStandingsAllTime}) s WHERE playerId = $playerId`;
 const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
     FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
+
 export {
     dropPlayerTable,
     dropEventTable,
