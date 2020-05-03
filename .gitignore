@@ -109,3 +109,5 @@ lib
 
 #google api authentication
 google-auth
+
+*/.DS_Store
