@@ -105,15 +105,7 @@ dist
 
 # sqlite data store
 data
-
-# compiled ts
-*.js.map
-src/*.js
-index.js
-*.d.ts
-*.d.ts.map
+lib
 
 #google api authentication
 google-auth
-
-#environment variables

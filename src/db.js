@@ -15,7 +15,7 @@ import {
 const Database = sqlite3.Database
 const db_spec = process.env.SQLITE3 || ':memory:';
 
-function executeSelectOne(query: string, args: any): Promise<any> {
+function executeSelectOne(query, args) {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
         db.get(`${query};`, args, (err, row) => {
@@ -28,7 +28,7 @@ function executeSelectOne(query: string, args: any): Promise<any> {
     });
 }
 
-function executeSelectSome(query: string, args: any): Promise<any> {
+function executeSelectSome(query, args) {
     return new Promise((resolve, reject) => {
         const db = new Database(db_spec);
         db.all(`${query};`, args, (err, rows) => {
@@ -41,9 +41,9 @@ function executeSelectSome(query: string, args: any): Promise<any> {
     });
 }
 
-function replace_statements(tableName: string) : (values: string[][]) => {query: string, params:string[]}[] {
-    return function(values: string[][]): {query: string, params:string[]}[] {
-        const keys: string[] = values[0];
+function replace_statements(tableName) {
+    return function(values) {
+        const keys = values[0];
         return values.slice(1).map(row => ({
             query: `
             REPLACE INTO 
@@ -51,7 +51,7 @@ function replace_statements(tableName: string) : (values: string[][]) => {query:
             VALUES 
                 (${new Array(row.length).fill('?').join(", ")});
             `,
-            params: row
+            params
     }))
 }}
 
@@ -68,7 +68,7 @@ async function initializeDb() {
                 .run(createEventTable)
                 .run(createPlayerTable)
                 .run(createPairingTable)
-                .run(createEntryTable, [], (err: any) => {
+                .run(createEntryTable, [], (err) => {
                     if(err) {
                         reject(err); 
                     } else {
@@ -78,12 +78,12 @@ async function initializeDb() {
         });
     });
 
-    await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName: string) => {
-        return getDataTable(tableName).then((values: string[][]) => {
+    await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName) => {
+        return getDataTable(tableName).then((values) => {
             return Promise.all(
                 replace_statements(tableName)(values).map(statement => {
                     return new Promise((resolve, reject) => {
-                        db.run(statement.query, statement.params, function(err: any) {
+                        db.run(statement.query, statement.params, function(err) {
                             if (err) {
                                 reject(err)
                             }
@@ -98,9 +98,9 @@ async function initializeDb() {
     db.close()
 }
 
-function insertStatement(tableName: string, dataRow: any): {query: string, args: string[]} {
+function insertStatement(tableName, dataRow){
     const keys = dataRow.keys();
-    const args = keys.map((k: string) => dataRow[k]);
+    const args = keys.map((k) => dataRow[k]);
 
     const query = `REPLACE INTO 
         ${tableName}(${keys.join(', ')})
@@ -114,7 +114,7 @@ function insertStatement(tableName: string, dataRow: any): {query: string, args:
     }
 }
 
-function executeInsertData(tableName: string, dataTable: any[]) {
+function executeInsertData(tableName, dataTable) {
     const db = new Database(db_spec);
 
     db.serialize(() => {

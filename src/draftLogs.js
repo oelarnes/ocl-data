@@ -2,23 +2,12 @@ import {List} from 'immutable';
 import { readFileSync, readFile } from 'fs';
 import { executeInsertData } from './db';
 
-interface LogRow {
-    packNum: number,
-    pickNum: number,
-    card: string,
-    otherCards: string
-}
 
-interface ProcessedLog {
-    seatNum: number,
-    logRows: LogRow[]
-}
-
-async function loadLogAndWrite(filename: string, eventId: string, seatings: string[]) {
+async function loadLogAndWrite(filename, eventId, seatings) {
     const processedLog = processLog(readFileSync(filename, 'utf-8'));
 
     const playerId = seatings[processedLog.seatNum];
-    const uploadTable = processedLog.logRows.map((logRow: LogRow) => {
+    const uploadTable = processedLog.logRows.map((logRow) => {
         return {
             ...logRow,
             playerId,
@@ -29,6 +18,6 @@ async function loadLogAndWrite(filename: string, eventId: string, seatings: stri
     return executeInsertData('pick', uploadTable);
 }
 
-function processLog(draftLog: string): any /*{ logRows: logRow[], seatNum: number }*/ {
+function processLog(draftLog) /*{ logRows: logRow[], seatNum: number }*/ {
     console.log(draftLog);
 }
