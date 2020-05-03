@@ -43,6 +43,7 @@ type Entry {
     accountPw: String
     isOpen: Boolean!
     pairings: [Pairing]
+    deck: Deck
 }
 type Pairing {
     eventId: ID!
@@ -81,6 +82,13 @@ type Pick {
     otherCards: [String]
     isMain: Int
     poolAsOf: String
+    ownedDekRow: String
+}
+type Deck {
+    pool: Pick[]
+    main: Pick[]
+    sideboard: Pick[]
+    dekFile: String
 }
 
 type Query {

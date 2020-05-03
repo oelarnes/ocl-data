@@ -95,6 +95,8 @@ async function initializeDb() {
         }); 
     }));
 
+    await uploadAllDraftLogs();
+
     db.close()
 }
 

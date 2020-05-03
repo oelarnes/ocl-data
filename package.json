@@ -4,13 +4,13 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "babel --watch src --out-dir lib",
     "test": "jest",
-    "install": "./local-env.sh; tsc"
+    "install": "./local-env.sh"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/oelarnes/ocl-data.git"
+    "url": "https://github.com/oelarnes/ocl-data.git"
   },
   "author": "Joel Barnes",
   "license": "ISC",
