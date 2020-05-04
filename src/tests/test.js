@@ -48,8 +48,13 @@ test('We can parse a draftlog', () => {
     const processedLog = processLog(readFileSync('./test-data/test-draftlog.txt', 'utf-8'));
 
     expect(processedLog).toHaveProperty('seatNum', 4);
-    expect(processedLog.logRow[0]).toHaveProperty('card', 'Ugin, the Spirit Dragon');
-    expect(processedLog.logRow[1]).toHaveProperty('packNum', 1);
-    expect(processedLog.logRow[1]).toHaveProperty('pickNum', 1);
-    expect(processedLog.logRow[13]).toHaveProperty('otherCardsString', 'Tangle Wire\n')
+    expect(processedLog.logRows[0]).toHaveProperty('card', 'Ugin, the Spirit Dragon');
+    expect(processedLog.logRows[1]).toHaveProperty('packNum', 1);
+    expect(processedLog.logRows[1]).toHaveProperty('pickNum', 2);
+    expect(processedLog.logRows[43]).toHaveProperty('packNum', 3);
+    expect(processedLog.logRows[43]).toHaveProperty('pickNum', 14);
+    expect(processedLog.logRows[12]).toHaveProperty('otherCardsString', 
+`Satyr Wayfinder
+Thrun, the Last Troll
+`)
 });
