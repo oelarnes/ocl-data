@@ -6,11 +6,14 @@ import {
     dropEventTable,
     dropPairingTable,
     dropPlayerTable,
+    dropPickTable,
     createEntryTable,
     createEventTable,
     createPairingTable,
-    createPlayerTable
+    createPlayerTable,
+    createPickTable
 } from './sqlTemplates';
+import { processAllEventFiles } from './draftLogs';
 
 const Database = sqlite3.Database
 const DB_SPEC = process.env.SQLITE3 || ':memory:';
@@ -29,6 +32,9 @@ function executeSelectOne(query, args) {
             resolve(row);
         });
         db.close();
+    }).catch((err) => {
+        console.log(err);
+        db.close()
     });
 }
 
@@ -42,6 +48,9 @@ function executeSelectSome(query, args) {
             resolve(rows);
         });
         db.close();
+    }).catch((err) => {
+        console.log(err);
+        db.close()
     });
 }
 
@@ -70,9 +79,11 @@ async function initializeDb() {
                 .run(dropPlayerTable)
                 .run(dropEntryTable)
                 .run(dropPairingTable)
+                .run(dropPickTable)
                 .run(createEventTable)
                 .run(createPlayerTable)
                 .run(createPairingTable)
+                .run(createPickTable)
                 .run(createEntryTable, [], (err) => {
                     if (err) {
                         reject(err);
@@ -81,6 +92,9 @@ async function initializeDb() {
                     }
                 })
         });
+    }).catch(err => {
+        console.log(err);
+        db.close();
     });
 
     await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName) => {
@@ -94,13 +108,20 @@ async function initializeDb() {
                             }
                             resolve()
                         })
+                    }).catch(err => {
+                        console.log(err);
+                        db.close();
                     })
                 })
             );
         });
     }));
 
-    return db.close()
+    db.close()
+
+    await processAllEventFiles();
+    console.log('Final Initialization Message');
+    return
 }
 
 function insertStatement(tableName, dataRow) {
@@ -133,6 +154,9 @@ function executeInsertData(tableName, dataTable) {
             });
         });
     })).then(() => {
+        db.close()
+    }).catch((err) => {
+        console.log(err);
         db.close()
     });
 }
