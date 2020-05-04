@@ -41,11 +41,11 @@ function processLog(draftLog) /*{ logRows: logRow[], seatNum: number }*/ {
             throw 'Invalid draftlog, pick segment missing selection indicator'
         }
         let card = pickLine.match(selectionRegex)[1]
-        let contextLines = cardLines.filter(line => !selectionRegex.test(line)).map(s => s.trim() + '\n');
+        let contextLines = cardLines.filter(line => !selectionRegex.test(line)).map(s => s.trim());
         logRows = logRows.push(
             {
                 card,
-                otherCardsString: contextLines.join(''),
+                otherCardsString: contextLines.join('\n'),
                 packNum: Math.floor(index/15) + 1,
                 pickNum: index % 15 + 1 
             }

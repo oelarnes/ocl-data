@@ -55,6 +55,5 @@ test('We can parse a draftlog', () => {
     expect(processedLog.logRows[43]).toHaveProperty('pickNum', 14);
     expect(processedLog.logRows[12]).toHaveProperty('otherCardsString', 
 `Satyr Wayfinder
-Thrun, the Last Troll
-`)
+Thrun, the Last Troll`)
 });
