@@ -21,3 +21,8 @@ function loadLogAndWrite(filename, eventId, seatings) {
 function processLog(draftLog) /*{ logRows: logRow[], seatNum: number }*/ {
     console.log(draftLog);
 }
+
+export {
+    loadLogAndWrite,
+    processLog
+}

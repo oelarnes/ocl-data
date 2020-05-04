@@ -1,4 +1,6 @@
 import { getDb, executeSelectOne, executeInsertData } from "../db";
+import { processLog } from '../draftLogs';
+import { readFileSync } from 'fs';
 
 afterAll(() => {
     const db = getDb();
@@ -40,4 +42,14 @@ test('We can get the data we inserted with parameters', () => {
             x1: 'a',
             x2: 5
         });
+});
+
+test('We can parse a draftlog', () => {
+    const processedLog = processLog(readFileSync('./test-data/test-draftlog.txt', 'utf-8'));
+
+    expect(processedLog).toHaveProperty('seatNum', 4);
+    expect(processedLog.logRow[0]).toHaveProperty('card', 'Ugin, the Spirit Dragon');
+    expect(processedLog.logRow[1]).toHaveProperty('packNum', 1);
+    expect(processedLog.logRow[1]).toHaveProperty('pickNum', 1);
+    expect(processedLog.logRow[13]).toHaveProperty('otherCardsString', 'Tangle Wire\n')
 });
