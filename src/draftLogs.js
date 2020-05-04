@@ -1,9 +1,9 @@
 import {List} from 'immutable';
-import { readFileSync, readFile } from 'fs';
+import { readFileSync } from 'fs';
 import { executeInsertData } from './db';
 
 
-async function loadLogAndWrite(filename, eventId, seatings) {
+function loadLogAndWrite(filename, eventId, seatings) {
     const processedLog = processLog(readFileSync(filename, 'utf-8'));
 
     const playerId = seatings[processedLog.seatNum];

@@ -1,23 +1,27 @@
 import sqlite3 from 'sqlite3';
 import { getDataTable } from './googleapi';
 
-import { 
-    dropEntryTable, 
-    dropEventTable, 
-    dropPairingTable, 
-    dropPlayerTable, 
-    createEntryTable, 
-    createEventTable, 
-    createPairingTable,  
+import {
+    dropEntryTable,
+    dropEventTable,
+    dropPairingTable,
+    dropPlayerTable,
+    createEntryTable,
+    createEventTable,
+    createPairingTable,
     createPlayerTable
 } from './sqlTemplates';
 
 const Database = sqlite3.Database
-const db_spec = process.env.SQLITE3 || ':memory:';
+const DB_SPEC = process.env.SQLITE3 || ':memory:';
+
+function getDb() {
+    return new Database(DB_SPEC);
+}
 
 function executeSelectOne(query, args) {
     return new Promise((resolve, reject) => {
-        const db = new Database(db_spec);
+        const db = getDb();
         db.get(`${query};`, args, (err, row) => {
             if (err) {
                 reject(err);
@@ -30,7 +34,7 @@ function executeSelectOne(query, args) {
 
 function executeSelectSome(query, args) {
     return new Promise((resolve, reject) => {
-        const db = new Database(db_spec);
+        const db = getDb();
         db.all(`${query};`, args, (err, rows) => {
             if (err) {
                 reject(err);
@@ -42,7 +46,7 @@ function executeSelectSome(query, args) {
 }
 
 function replaceStatements(tableName) {
-    return function(values) {
+    return function (values) {
         const keys = values[0];
         return values.slice(1).map(row => ({
             query: `
@@ -52,15 +56,16 @@ function replaceStatements(tableName) {
                 (${new Array(row.length).fill('?').join(", ")}); 
             `,
             params: row
-    }))
-}}
+        }))
+    }
+}
 
 async function initializeDb() {
-    console.log(`Connecting to sqlite3 database at ${db_spec}`);
-    const db = new Database(db_spec);
-    
-    await new Promise( (resolve, reject) => {
-        db.serialize( () => {
+    console.log(`Connecting to sqlite3 database at ${DB_SPEC}`);
+    const db = getDb();
+
+    await new Promise((resolve, reject) => {
+        db.serialize(() => {
             db.run(dropEventTable)
                 .run(dropPlayerTable)
                 .run(dropEntryTable)
@@ -69,11 +74,11 @@ async function initializeDb() {
                 .run(createPlayerTable)
                 .run(createPairingTable)
                 .run(createEntryTable, [], (err) => {
-                    if(err) {
-                        reject(err); 
+                    if (err) {
+                        reject(err);
                     } else {
                         resolve();
-                    }           
+                    }
                 })
         });
     });
@@ -83,23 +88,23 @@ async function initializeDb() {
             return Promise.all(
                 replaceStatements(tableName)(values).map(statement => {
                     return new Promise((resolve, reject) => {
-                        db.run(statement.query, statement.params, function(err) {
+                        db.run(statement.query, statement.params, function (err) {
                             if (err) {
                                 reject(err)
                             }
                             resolve()
                         })
                     })
-                }) 
+                })
             );
-        }); 
+        });
     }));
 
-    db.close()
+    return db.close()
 }
 
-function insertStatement(tableName, dataRow){
-    const keys = dataRow.keys();
+function insertStatement(tableName, dataRow) {
+    const keys = Object.keys(dataRow);
     const args = keys.map((k) => dataRow[k]);
 
     const query = `REPLACE INTO 
@@ -115,18 +120,25 @@ function insertStatement(tableName, dataRow){
 }
 
 function executeInsertData(tableName, dataTable) {
-    const db = new Database(db_spec);
+    const db = getDb();
 
-    db.serialize(() => {
-        dataTable.forEach((row) => {
-            const {query, args} = insertStatement(tableName, row)
-            db.run(query, args);
-        })
+    return Promise.all(dataTable.map((row) => {
+        const { query, args } = insertStatement(tableName, row);
+        return new Promise((resolve, reject) => {
+            db.run(query, args, (err) => {
+                if (err) {
+                    reject(err)
+                }
+                resolve();
+            });
+        });
+    })).then(() => {
+        db.close()
     });
-    db.close();
 }
 
 export {
+    getDb,
     executeSelectOne,
     executeSelectSome,
     executeInsertData,
