@@ -119,7 +119,7 @@ async function initializeDb() {
 
     db.close()
 
-    await processAllEventFiles();
+    // await processAllEventFiles();
     return 
 }
 

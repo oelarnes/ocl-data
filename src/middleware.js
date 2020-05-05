@@ -8,6 +8,8 @@ import {
     selectEvent,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByNameAsc,
+    selectPlayerByHandleSearch,
+    selectPlayersByNameSearch,
     selectEventsDesc,
     selectEventsAsc,
     selectEntriesByPlayerAsc,
@@ -64,8 +66,9 @@ const resolvers = {
 
             const byHandleResults = await (byHandle === undefined) ? [] :
                 executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
-
-            return [...byNameResults, ...byHandleResults];
+            
+            return byNameResults;
+            // return [...byNameResults, ...byHandleResults];
         },
         event(_parent, { id }) {
             return executeSelectOne(selectEvent, { $eventId: id });
@@ -128,11 +131,11 @@ const resolvers = {
             return executeSelectOne(query, args)
         },
         async openPairings(parent, { }) {
-            const pairing = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
-            return {
+            const pairings = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
+            return pairings.map((pairing) => ({
                 ...pairing,
                 asPlayerId: parent.id
-            }
+            }));
         }
     },
     OCLEvent: {
