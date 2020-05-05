@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'fs';
-import { executeInsertData, executeSelectSome, executeSelectOne } from './db';
+import { executeInsertData, executeSelectSome, executeSelectOne, getDb } from './db';
 import path from 'path';
 
 const EVENT_FOLDER = './data/events';
@@ -88,7 +88,7 @@ async function loadDeckAndWrite(filename, eventId) {
             if (rows.length > 1) {
                 throw 'Multiple entries found containing some card from this deck. Does the cube have multiples? If so fix logic!'
             }
-            
+
             return rows[0].seatNum;
         });
     }
@@ -100,6 +100,9 @@ async function loadDeckAndWrite(filename, eventId) {
         cardName: name,
         isMain: 0
     })));
+
+    db = getDb();
+
 }
 
 function processLog(draftLog) {
