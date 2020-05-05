@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS pick(
     eventId TEXT,
     packNum INT,
     pickNum INT,
-    card TEXT,
-    otherCardsString TEXT,
+    cardName TEXT, 
+    otherCardNamesString TEXT,
     isMain INT
 )`
 //Select
@@ -102,6 +102,8 @@ const selectPairingsByPlayerPairAsc = `SELECT * FROM pairing
 const selectPairingsByPlayerPairDesc = `SELECT * FROM pairing 
     WHERE (p1Id = $playerId AND p2Id = $oppId) OR (p2Id = $playerId AND p1Id = $oppId) AND completedDate < $after 
     ORDER BY completedDate DESC LIMIT $howMany`;
+const selectOpenPairingsByPlayer = `SELECT * FROM pairing
+    WHERE (p1Id = $playerId OR p2Id = $playerId) and completedDate > $nowTime`;
 const selectStandingsAllTime = `SELECT *, rank as allTimeRank FROM (
     SELECT 
         ROW_NUMBER () OVER (
@@ -168,7 +170,9 @@ const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matc
     FROM (${selectStandingsAllTime}) s WHERE playerId = $playerId`;
 const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
     FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
-
+const selectPicksForEntry = `SELECT * FROM pick WHERE playerId = $playerId AND eventId = $eventId ORDER BY packNum ASC, pickNum ASC`;
+// updates
+const updatePickWithMainInfo = `UPDATE`
 export {
     dropPlayerTable,
     dropEventTable,
@@ -202,8 +206,10 @@ export {
     selectPairingsByEntry,
     selectPairingsByPlayerPairAsc,
     selectPairingsByPlayerPairDesc,
+    selectOpenPairingsByPlayer,
     selectStandingsAllTime,
     selectStandingsBySeason,
     selectStandingForPlayerAllTime,
-    selectStandingForPlayerBySeason
+    selectStandingForPlayerBySeason,
+    selectPicksForEntry
 };

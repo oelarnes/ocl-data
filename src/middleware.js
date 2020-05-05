@@ -19,11 +19,13 @@ import {
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
     selectPairingsByEntry,
+    selectOpenPairingsByPlayer,
     selectStandingsAllTime,
     selectStandingsBySeason,
     selectStandingForPlayerAllTime,
     selectStandingForPlayerBySeason,
-    selectEntryLosses
+    selectEntryLosses,
+    selectPicksForEntry
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -32,7 +34,6 @@ const MAX_RESULTS = 10000;
 const MAX_DATE = "9999-12-31";
 const MIN_DATE = "0000-00-00";
 
-// Initialize a GraphQL schema
 const typeDefs = readFileSync("./src/schema.graphql", "utf-8");
 
 function getDateAfter(after, asc) {
@@ -59,7 +60,7 @@ const resolvers = {
         },
         async playerSearch(_parent, { byName, byHandle }) {
             const byNameResults = await (byName === undefined) ? [] :
-                executeSelectSome(selectPlayersByNameSearch, { $byName: byName }); 
+                executeSelectSome(selectPlayersByNameSearch, { $byName: byName });
 
             const byHandleResults = await (byHandle === undefined) ? [] :
                 executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
@@ -113,7 +114,7 @@ const resolvers = {
             after = getDateAfter(after, asc)
 
             const rows = await executeSelectSome(query, { $playerId: parent.id, $oppId: oppId, $howMany: howMany, $after: after })
-            
+
             return rows.map((row) => ({
                 ...row,
                 asPlayerId: parent.id
@@ -125,6 +126,13 @@ const resolvers = {
                 :
                 [selectStandingForPlayerBySeason, { $playerId: parent.id, $season: season, $howMany: MAX_RESULTS, $after: 0 }];
             return executeSelectOne(query, args)
+        },
+        async openPairings(parent, { }) {
+            const pairing = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
+            return {
+                ...pairing,
+                asPlayerId: parent.id
+            }
         }
     },
     OCLEvent: {
@@ -141,53 +149,59 @@ const resolvers = {
         }
     },
     Entry: {
-        player(parent, args) {
+        player(parent) {
             return executeSelectOne(selectPlayer, { $playerId: parent.playerId });
         },
-        event(parent, args) {
+        event(parent) {
             return executeSelectOne(selectEvent, { $eventId: parent.eventId });
         },
-        async pairings(parent, {}) {
+        async pairings(parent) {
             const pairings = await executeSelectSome(selectPairingsByEntry, { $eventId: parent.eventId, $playerId: parent.playerId });
             return pairings.map((row) => ({
                 ...row,
                 asPlayerId: parent.playerId
             }));
         },
-        async matchWins(parent, {}) {
-            const winsRow = await executeSelectOne(selectEntryWins, {$eventId: parent.eventId, $playerId: parent.playerId});
+        async matchWins(parent) {
+            const winsRow = await executeSelectOne(selectEntryWins, { $eventId: parent.eventId, $playerId: parent.playerId });
             return winsRow?.wins;
         },
-        async matchLosses(parent, {}) {
-            const lossesRow = await executeSelectOne(selectEntryLosses, {$eventId: parent.eventId, $playerId: parent.playerId});
+        async matchLosses(parent) {
+            const lossesRow = await executeSelectOne(selectEntryLosses, { $eventId: parent.eventId, $playerId: parent.playerId });
             return lossesRow?.losses;
         },
+        async deck(parent) {
+            const pool = await executeSelectSome(selectPicksForEntry, { $eventId: parent.eventId, $playerId: parent.playerId });
+            return {
+                pool
+            }
+        }
     },
     Pairing: {
-        p1Entry(parent, args) {
+        p1Entry(parent) {
             return executeSelectOne(selectEntry, { $playerId: parent.p1Id, $eventId: parent.eventId })
         },
-        p2Entry(parent, args) {
+        p2Entry(parent) {
             return executeSelectOne(selectEntry, { $playerId: parent.p2Id, $eventId: parent.eventId })
         },
-        opponentId(parent, args) {
+        opponentId(parent) {
             return parent.asPlayerId === undefined ? undefined : parent.asPlayerId === parent.p1Id ? parent.p2Id : parent.p1Id;
         },
-        asPlayerGameWins(parent, args) {
+        asPlayerGameWins(parent) {
             return parent.asPlayerId === undefined ? undefined : parent.asPlayerId === parent.p1Id ? parent.p1GameWins : parent.p2GameWins;
         },
-        asPlayerMatchWin(parent, args) {
+        asPlayerMatchWin(parent) {
             return parent.asPlayerId === undefined ? undefined :
                 parent.asPlayerId == parent.p1Id ? parent.p1MatchWin : parent.p2MatchWin
         },
-        opponentMatchWin(parent, args) {
+        opponentMatchWin(parent) {
             return parent.asPlayerId === undefined ? undefined :
                 parent.asPlayerId == parent.p1Id ? parent.p2MatchWin : parent.p1MatchWin;
         },
-        opponentGameWins(parent, args) {
+        opponentGameWins(parent) {
             return parent.asPlayerId === undefined ? undefined : parent.asPlayerId === parent.p1Id ? parent.p2GameWins : parent.p1GameWins;
         },
-        asPlayerEntry(parent, args) {
+        asPlayerEntry(parent) {
             return parent.asPlayerId === undefined ? undefined :
                 executeSelectOne(selectEntry, { $playerId: parent.asPlayerId, $eventId: parent.eventId });
         },
@@ -195,10 +209,10 @@ const resolvers = {
             return parent.asPlayerId === undefined ? undefined :
                 executeSelectOne(selectEntry, { $playerId: resolvers.Pairing.opponentId(parent, args), $eventId: parent.eventId });
         },
-        winnerId(parent, args) {
+        winnerId(parent) {
             return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p1Id : parent.p2Id;
         },
-        loserId(parent, args) {
+        loserId(parent) {
             return parent.p1MatchWin === undefined ? undefined : parent.p1MatchWin ? parent.p2Id : parent.p1Id;
         },
         winnerEntry(parent, args) {
@@ -209,7 +223,7 @@ const resolvers = {
         },
     },
     Standing: {
-        player(parent, args) {
+        player(parent) {
             return executeSelectOne(selectPlayer, { $playerId: parent.playerId })
         }
     }

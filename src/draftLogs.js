@@ -38,10 +38,12 @@ async function processAllEventFiles() {
         const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
             .then((rows) => rows.map((row) => row.playerId));
 
-        if (logFilePaths.length == 8) {
-            for (let filename of logFilePaths) {
-                await loadLogAndWrite(filename, eventId, seatings);
-            }
+        for (let filename of logFilePaths) {
+            await loadLogAndWrite(filename, eventId, seatings);
+        }
+
+        for (let filename of deckFilePaths) {
+            await loadDeckAndWrite(filename, eventId);
         }
     }
     
@@ -68,6 +70,38 @@ async function loadLogAndWrite(filename, eventId, seatings) {
     return executeInsertData('pick', uploadTable);
 }
 
+async function loadDeckAndWrite(filename, eventId) {
+    console.log(`Processing decklist ${filename}`);
+    const processedDeck = processDeck(readFileSync(filename, 'utf-8'));
+
+    if (!processedDeck.mainDeckNames) {
+        throw `Decklist file ${filename} for event ${eventId} has no cards in maindeck.`;
+    }
+    if (processedDeck.seatNum === undefined) {
+        processedDeck.seatNum = await executeSelectSome(
+            `SELECT DISTINCT entry.seatNum FROM entry JOIN pick ON entry.playerId = pick.playerId AND entry.eventId = pick.eventId WHERE entry.eventId = $eventId AND cardName IN $cardNames`, 
+            {
+                $cardNames: processedDeck.mainDeckNames,
+                $eventId: eventId
+            }
+        ).then((rows) => {
+            if (rows.length > 1) {
+                throw 'Multiple entries found containing some card from this deck. Does the cube have multiples? If so fix logic!'
+            }
+            
+            return rows[0].seatNum;
+        });
+    }
+
+    const uploadTable = processDeck.mainDeckNames.map((name) => ({
+        cardName: name,
+        isMain: 1
+    })).concat(processedDeck.sideboardNames.map((name) => ({
+        cardName: name,
+        isMain: 0
+    })));
+}
+
 function processLog(draftLog) {
     const selectionRegex = /--> (.*)/;
     draftLog = draftLog.replace(/\r/g, '');
@@ -91,11 +125,11 @@ function processLog(draftLog) {
         if (!pickLine) {
             throw 'Invalid draftlog, pick segment missing selection indicator'
         }
-        const card = pickLine.match(selectionRegex)[1]
+        const cardName = pickLine.match(selectionRegex)[1]
         const contextLines = cardLines.filter(line => !selectionRegex.test(line)).map(s => s.trim());
         return {
-            card,
-            otherCardsString: contextLines.join('\n'),
+            cardName,
+            otherCardNamesString: contextLines.join('\n'),
             packNum: Math.floor(index / 15) + 1,
             pickNum: index % 15 + 1
         }

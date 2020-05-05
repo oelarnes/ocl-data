@@ -120,8 +120,7 @@ async function initializeDb() {
     db.close()
 
     await processAllEventFiles();
-    console.log('Final Initialization Message');
-    return
+    return 
 }
 
 function insertStatement(tableName, dataRow) {

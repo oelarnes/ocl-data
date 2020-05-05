@@ -8,6 +8,8 @@ type Player {
     eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
     standing(season: String): Standing
     pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]
+    favoriteCards(howMany: Int, after: String): [DraftStat]
+    openPairings: [Pairing]
 }
 type Standing {
     playerId: ID!
@@ -77,20 +79,44 @@ type Pick {
     playerId: ID!
     eventId: ID!
     entry: Entry
-    packNum: Int!
-    pickNum: Int!
-    card: String
-    otherCardsString: String
-    otherCards: [String]
+    packNum: Int
+    pickNum: Int
+    cardName: String
+    card(stylePref: String): Card
+    draftStat: DraftStat
+    otherCardNamesString: String
+    otherCardNames: [String]
+    otherCards: [Card]
     isMain: Int
     poolAsOf: String
-    ownedDekRow: String
 }
 type Deck {
     pool: [Pick]
     main: [Pick]
     sideboard: [Pick]
     dekFile: String
+}
+type Card {
+    name: String
+    mtgoName: String    
+    mtgoId: Int
+    numOwned: Int
+    numWishlist: Int
+    styleClass: String
+    isFoil: Boolean
+    dekRow(howMany: Int, isSideboard: Boolean): String
+    numAtAccount(oclAccount: String): Int
+    cardDraftStat: DraftStat
+}
+type DraftStat {
+    cardName: String
+    avgPickOrder(cubeTypes: String): Float
+    powerIndex: Float
+    mainDeckPct: Float
+    wheelPct: Float
+    timesInPool: Int 
+    currentlyIn(cubeName: String): Int
+    recentDecks(howMany: Int): [Deck]
 }
 
 type Query {
@@ -101,4 +127,5 @@ type Query {
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry
     standings(season: String, howMany: Int, after: Int): [Standing]
+    cardStats(cardName: String): DraftStat
 }
