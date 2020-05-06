@@ -8,6 +8,8 @@ import {
     selectEvent,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByNameAsc,
+    selectPlayerByHandleSearch,
+    selectPlayersByNameSearch,
     selectEventsDesc,
     selectEventsAsc,
     selectEntriesByPlayerAsc,
@@ -65,8 +67,9 @@ const resolvers = {
 
             const byHandleResults = await (byHandle === undefined) ? [] :
                 executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
-
-            return [...byNameResults, ...byHandleResults];
+            
+            return byNameResults;
+            // return [...byNameResults, ...byHandleResults];
         },
         event(_parent, { id }) {
             return executeSelectOne(selectEvent, { $eventId: id });
