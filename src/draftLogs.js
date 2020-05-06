@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { executeInsertData, executeSelectSome, executeSelectOne, getDb } from './db';
 import path from 'path';
+import { executeRun } from '../lib/db';
 
 const EVENT_FOLDER = './data/events';
 const SELECTION_REGEX = /--> (.*)/;
@@ -73,15 +74,16 @@ async function loadLogAndWrite(filename, eventId, seatings) {
 async function loadDeckAndWrite(filename, eventId) {
     console.log(`Processing decklist ${filename}`);
     const processedDeck = processDeck(readFileSync(filename, 'utf-8'));
+    let playerId;
 
-    if (!processedDeck.mainDeckNames) {
-        throw `Decklist file ${filename} for event ${eventId} has no cards in maindeck.`;
+    if (!processedDeck.cardRows) {
+        throw `Decklist file ${filename} for event ${eventId} has no cards.`;
     }
-    if (processedDeck.seatNum === undefined) {
-        processedDeck.seatNum = await executeSelectSome(
-            `SELECT DISTINCT entry.seatNum FROM entry JOIN pick ON entry.playerId = pick.playerId AND entry.eventId = pick.eventId WHERE entry.eventId = $eventId AND cardName IN $cardNames`, 
+    if (processedDeck.playerFullName === undefined) {
+        playerId = await executeSelectSome(
+            `SELECT DISTINCT entry.playerId FROM entry JOIN pick ON entry.playerId = pick.playerId AND entry.eventId = pick.eventId WHERE entry.eventId = $eventId AND cardName IN $cardNames`, 
             {
-                $cardNames: processedDeck.mainDeckNames,
+                $cardNames: processedDeck.cardRows.map(row => row.cardName),
                 $eventId: eventId
             }
         ).then((rows) => {
@@ -89,20 +91,40 @@ async function loadDeckAndWrite(filename, eventId) {
                 throw 'Multiple entries found containing some card from this deck. Does the cube have multiples? If so fix logic!'
             }
 
-            return rows[0].seatNum;
+            if (rows.length === 0) {
+                throw 'No entry found drafting any of these cards!'
+            }
+
+            return rows[0].playerId;
+        });
+    } else {
+        playerId = await executeSelectOne(`SELECT id FROM player WHERE fullName = $playerFullName`, {$playerFullName: processedDeck.playerFullName}).then((row) => {
+            if (!row) {
+                throw `No player found with name ${processedDeck.playerFullName}`
+            }
         });
     }
 
-    const uploadTable = processDeck.mainDeckNames.map((name) => ({
-        cardName: name,
-        isMain: 1
-    })).concat(processedDeck.sideboardNames.map((name) => ({
-        cardName: name,
-        isMain: 0
-    })));
-
-    db = getDb();
-
+    for (let cardRow of processedDeck.cardRows) {
+        // select the first row of this entry with matching cardname and no main/sb info
+        const matchingRow = await executeSelectOne(
+            `SELECT * FROM pick WHERE eventId = $eventId AND playerId = $playerId AND cardName = $cardName AND isMain IS NULL`,
+            {
+                $playerId: playerId,
+                $eventId: eventId,
+                $cardName: cardName
+            }
+        );
+        if (matchingRow) {
+            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND cardName = $cardName AND isMain IS NULL;`);
+        } else {
+            const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`).then((row) => row.newId);
+            await executeRun(
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName);`, 
+                {$playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardNAme: cardRow.cardName}
+            )
+        }
+    }
 }
 
 function processLog(draftLog) {
@@ -133,6 +155,7 @@ function processLog(draftLog) {
         return {
             cardName,
             otherCardNamesString: contextLines.join('\n'),
+            pickId: index + 1,
             packNum: Math.floor(index / 15) + 1,
             pickNum: index % 15 + 1
         }
@@ -143,6 +166,15 @@ function processLog(draftLog) {
         playerTag,
         logRows
     }
+}
+
+function processDec(decklist) {
+    decklist = decklist.replace(/\r/g, '');
+    const lines = decklist.split('\n').filter(line => !BASIC_REGEX.test(line));
+    
+    const sbBreakIndex = lines.findIndex('');
+
+
 }
 
 export {

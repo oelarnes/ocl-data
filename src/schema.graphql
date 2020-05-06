@@ -10,11 +10,12 @@ type Player {
     pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]
     favoriteCards(howMany: Int, after: String): [DraftStat]
     openPairings: [Pairing]
+    openEntries: [Entry]
 }
 type Standing {
     playerId: ID!
     season: String!
-    player: Player!
+    player: Player
     qps: Int
     matchWins: Int
     matchLosses: Int
@@ -35,15 +36,15 @@ type OCLEvent {
 type Entry {
     playerId: ID!
     eventId: ID!
-    player: Player!
-    event: OCLEvent!
+    player: Player
+    event: OCLEvent
     seatNum: Int!
     finalPosition: Int
     qpsAwarded: Int
     cpsAwarded: Int
     account: String
     accountPw: String
-    isOpen: Boolean!
+    isOpen: Boolean
     pairings: [Pairing]
     deck: Deck
     matchWins: Int
@@ -78,6 +79,7 @@ type Pairing {
 type Pick {
     playerId: ID!
     eventId: ID!
+    pickId: Int!
     entry: Entry
     packNum: Int
     pickNum: Int
@@ -99,7 +101,7 @@ type Deck {
 type Card {
     name: String
     mtgoName: String    
-    mtgoId: Int
+    mtgoId: Int!
     numOwned: Int
     numWishlist: Int
     styleClass: String
@@ -109,7 +111,7 @@ type Card {
     cardDraftStat: DraftStat
 }
 type DraftStat {
-    cardName: String
+    cardName: String!
     avgPickOrder(cubeTypes: String): Float
     powerIndex: Float
     mainDeckPct: Float

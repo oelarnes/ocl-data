@@ -14,6 +14,7 @@ import {
     selectEntriesByPlayerDesc,
     selectEntriesByEvent,
     selectEntryWins,
+    selectOpenEntriesByPlayer,
     selectPairingsByPlayerPairDesc,
     selectPairingsByPlayerPairAsc,
     selectPairingsByEvent,
@@ -127,16 +128,19 @@ const resolvers = {
                 [selectStandingForPlayerBySeason, { $playerId: parent.id, $season: season, $howMany: MAX_RESULTS, $after: 0 }];
             return executeSelectOne(query, args)
         },
-        async openPairings(parent, { }) {
+        async openPairings(parent) {
             const pairing = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
             return {
                 ...pairing,
                 asPlayerId: parent.id
             }
+        },
+        openEntries(parent) {
+            return executeSelectSome(selectOpenEntriesByPlayer, { $playerId: parent.id });
         }
     },
     OCLEvent: {
-        playerEntries(parent, { }) {
+        playerEntries(parent) {
             return executeSelectSome(selectEntriesByEvent, { $eventId: parent.id });
         },
         pairings(parent, { roundNum }) {

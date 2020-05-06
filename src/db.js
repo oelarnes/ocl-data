@@ -23,6 +23,13 @@ function getDb() {
 }
 
 function executeSelectOne(query, args) {
+    if (Array.isArray(args)) {
+        if (args.length && typeof(args[0]) === 'string') {
+            args = `('${args.join("', '")}')`
+        } else {
+            args = `(${args.join(', ')})`
+        }
+    }
     return new Promise((resolve, reject) => {
         const db = getDb();
         db.get(`${query};`, args, (err, row) => {
@@ -39,6 +46,14 @@ function executeSelectOne(query, args) {
 }
 
 function executeSelectSome(query, args) {
+    if (Array.isArray(args)) {
+        if (args.length && typeof(args[0]) === 'string') {
+            args = `('${args.join("', '")}')`
+        } else {
+            args = `(${args.join(', ')})`
+        }
+    }
+    
     return new Promise((resolve, reject) => {
         const db = getDb();
         db.all(`${query};`, args, (err, rows) => {
@@ -160,10 +175,27 @@ function executeInsertData(tableName, dataTable) {
     });
 }
 
+function executeRun(statement) {
+    const db = getDb();
+
+    return new Promise((resolve, reject) => {
+        db.run(statement, (err) => {
+            if (err) {
+                reject(err);
+            }
+            resolve()
+        })
+    }).catch((err) => {
+        console.log(err);
+        db.close();
+    });
+}
+
 export {
     getDb,
     executeSelectOne,
     executeSelectSome,
     executeInsertData,
+    executeRun,
     initializeDb
 }

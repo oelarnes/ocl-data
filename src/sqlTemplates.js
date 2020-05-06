@@ -56,11 +56,13 @@ const createPickTable = `
 CREATE TABLE IF NOT EXISTS pick(
     playerId TEXT,
     eventId TEXT,
+    pickId INT,
     packNum INT,
     pickNum INT,
     cardName TEXT, 
     otherCardNamesString TEXT,
-    isMain INT
+    isMain INT,
+    PRIMARY KEY(playerId, eventId, pickId)
 )`
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
@@ -93,6 +95,7 @@ const selectEntryLosses = `SELECT p1.losses+p2.losses AS losses FROM (
     SELECT SUM(p2MatchWin) AS losses FROM pairing WHERE p1Id = $playerId and eventId = $eventId
 ) p1
 `;
+const selectOpenEntriesByPlayer = `SELECT * FROM entry WHERE playerId = $playerId AND isOpen = 1`;
 const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId`;
 const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum`;
 const selectPairingsByEntry = `SELECT * FROM pairing WHERE eventId = $eventId AND (p1Id = $playerId or p2Id = $playerId)`;
@@ -171,8 +174,7 @@ const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matc
 const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
     FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
 const selectPicksForEntry = `SELECT * FROM pick WHERE playerId = $playerId AND eventId = $eventId ORDER BY packNum ASC, pickNum ASC`;
-// updates
-const updatePickWithMainInfo = `UPDATE`
+
 export {
     dropPlayerTable,
     dropEventTable,
@@ -200,6 +202,7 @@ export {
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntryWins,
+    selectOpenEntriesByPlayer,
     selectEntryLosses,
     selectPairingsByEvent,
     selectPairingsByEventAndRound,
