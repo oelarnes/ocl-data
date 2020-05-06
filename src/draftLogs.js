@@ -5,7 +5,7 @@ import { executeRun } from '../lib/db';
 
 const EVENT_FOLDER = './data/events';
 const SELECTION_REGEX = /--> (.*)/;
-const CARD_ROW_REGEX = /^1 .*/;
+const CARD_ROW_REGEX = /^1 (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 
 function fileIsDecklist(filename) {
@@ -168,16 +168,39 @@ function processLog(draftLog) {
     }
 }
 
-function processDec(decklist) {
+function processDeck(decklist) {
     decklist = decklist.replace(/\r/g, '');
-    const lines = decklist.split('\n').filter(line => !BASIC_REGEX.test(line));
+
+    const nameCheckSplit = decklist.split('=\n');
+    let playerFullName;
+
+    if (nameCheckSplit.length > 1) {
+        playerFullName = nameCheckSplit[0].trim();
+        deckList = nameCheckSplit[1];
+    }
+
+    const lines = decklist.split('\n').filter(line => 
+        (!BASIC_REGEX.test(line) && (CARD_ROW_REGEX.test(line) || line === ''))
+    );
     
     const sbBreakIndex = lines.findIndex('');
 
-
+    return {
+        cardRows:  lines.slice(0,sbBreakIndex).map(line => ({
+            cardName: line.match(CARD_ROW_REGEX)?.[1]?.trim(),
+            isMain: 1
+        })).concat(
+            lines.slice(sbBreakIndex+1).map(line => ({
+                cardName: line.match(CARD_ROW_REGEX)?.[1]?.trim(),
+                isMain: 0
+            }))
+        ).filter((row) => row.cardName !== null),
+        playerFullName
+    }
 }
 
 export {
     processAllEventFiles,
-    processLog
+    processLog,
+    processDeck
 }

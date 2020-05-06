@@ -1,6 +1,7 @@
 import { getDb, executeSelectOne, executeInsertData } from "../db";
 import { processLog } from '../draftLogs';
 import { readFileSync } from 'fs';
+import { processDeck } from "../../lib/draftLogs";
 
 afterAll(() => {
     const db = getDb();
@@ -57,3 +58,12 @@ test('We can parse a draftlog', () => {
 `Satyr Wayfinder
 Thrun, the Last Troll`)
 });
+
+test('We can parse a decklist', () => {
+    const processedDeck = processDeck(readFileSync('./test-data/test-decklist.txt', 'utf-8'));
+
+    expect(processedLog).toHaveProperty('fullPlayerName', null);
+    expect(processedLog.cardRows[0]).toHaveProperty('isMain', 1);
+    expect(processedLog.cardRows[0]).toHaveProperty('cardName', 'Griselbrand');
+    expect(processedLog.cardRows[26]).toHaveProperty('cardName', 'Bone Shredder');
+})

@@ -1,0 +1,50 @@
+1 Griselbrand
+1 Daze
+1 Thoughtseize
+1 Preordain
+1 Miscalculation
+1 Chart a Course
+1 Emrakul, the Promised End
+1 Mana Leak
+1 Hero's Downfall
+1 Gemstone Mine
+1 Exhume
+1 Mox Diamond
+1 Animate Dead
+1 Fatal Push
+1 Inkwell Leviathan
+1 Living Death
+1 Reanimate
+1 Liliana of the Veil
+1 Mox Pearl
+8 Swamp
+5 Island
+1 Looter il-Kor
+1 Thirst for Knowledge
+1 Sun Titan
+1 Gitaxian Probe
+1 Entomb
+1 Doom Whisperer
+1 Misty Rainforest
+1 Bone Shredder
+
+1 Lingering Souls
+1 Mardu Woe-Reaper
+1 Enlightened Tutor
+1 Empty the Warrens
+1 Staggershock
+1 Zurgo Bellstriker
+1 Liliana, the Last Hope
+1 Goblin Electromancer
+1 Bloodbraid Elf
+1 Phyrexian Revoker
+1 Terastodon
+1 Island
+1 Copperline Gorge
+1 Concealed Courtyard
+1 Thopter Spy Network
+1 Gush
+1 Phyrexian Arena
+1 Swamp
+1 Kitesail Freebooter
+1 Treasure Cruise
