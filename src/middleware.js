@@ -259,6 +259,12 @@ const resolvers = {
         sideboard(parent) {
             return parent.pool.filter(row => !row.isMain);
         }
+    },
+    Card: {
+        avgPickOrder(parent) {
+            /* TODO: this */
+            return executeSelectOne(`SELECT `)
+        }
     }
 };
 
