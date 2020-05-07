@@ -91,4 +91,4 @@ export function getDataTable(tableName) {
       authorize(JSON.parse(content), dataFetch);
     });
   })
-}
+} 

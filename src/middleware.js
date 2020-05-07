@@ -173,6 +173,7 @@ const resolvers = {
         },
         async pairings(parent) {
             const pairings = await executeSelectSome(selectPairingsByEntry, { $eventId: parent.eventId, $playerId: parent.playerId });
+            console.log(pairings)
             return pairings.map((row) => ({
                 ...row,
                 asPlayerId: parent.playerId
