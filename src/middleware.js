@@ -67,7 +67,7 @@ const resolvers = {
 
             const byHandleResults = await (byHandle === undefined) ? [] :
                 executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
-            
+
             return byNameResults;
             // return [...byNameResults, ...byHandleResults];
         },
@@ -132,11 +132,11 @@ const resolvers = {
             return executeSelectOne(query, args)
         },
         async openPairings(parent) {
-            const pairing = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
-            return {
+            const pairings = await executeSelectSome(selectOpenPairingsByPlayer, { $playerId: parent.id, $nowTime: new Date().toISOString() });
+            return pairings.map(pairing => ({
                 ...pairing,
                 asPlayerId: parent.id
-            }
+            }));
         },
         openEntries(parent) {
             return executeSelectSome(selectOpenEntriesByPlayer, { $playerId: parent.id });
@@ -232,6 +232,14 @@ const resolvers = {
     Standing: {
         player(parent) {
             return executeSelectOne(selectPlayer, { $playerId: parent.playerId })
+        }
+    },
+    Deck: {
+        main(parent) {
+            return parent.pool.filter(row => row.isMain);
+        },
+        sideboard(parent) {
+            return parent.pool.filter(row => !row.isMain);
         }
     }
 };

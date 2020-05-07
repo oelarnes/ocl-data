@@ -24,9 +24,11 @@ function fileIsDraftLog(filename) {
 async function processAllEventFiles() {
     const allEventIds = await executeSelectSome('SELECT id FROM event;', {}).then(rows => rows.map(row => row.id));
     const allFolders = readdirSync(EVENT_FOLDER).filter(item => allEventIds.includes(item));
-    console.log('The following event ids are missing data folders:')
+
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
+        console.log('Event ids missing data folder:')
         console.log(item)
+        console.log()
     })
 
     for (let eventId of allFolders) {
@@ -47,7 +49,7 @@ async function processAllEventFiles() {
             await loadDeckAndWrite(filename, eventId);
         }
     }
-    
+
     return
 }
 
@@ -56,7 +58,7 @@ async function loadLogAndWrite(filename, eventId, seatings) {
     const processedLog = processLog(readFileSync(filename, 'utf-8'));
 
     const playerId = seatings[processedLog.seatNum - 1];
-    const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', {$playerId: playerId})
+    const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId })
         .then(row => row.fullName);
     console.log(`Inferred identity of ${processedLog.playerTag} as ${fullName} in event ${eventId}`);
 
@@ -81,9 +83,9 @@ async function loadDeckAndWrite(filename, eventId) {
     }
     if (processedDeck.playerFullName === undefined) {
         playerId = await executeSelectSome(
-            `SELECT DISTINCT entry.playerId FROM entry JOIN pick ON entry.playerId = pick.playerId AND entry.eventId = pick.eventId WHERE entry.eventId = $eventId AND cardName IN $cardNames`, 
+            `SELECT entry.playerId FROM entry JOIN pick ON entry.playerId = pick.playerId AND entry.eventId = pick.eventId WHERE entry.eventId = $eventId AND pick.cardName = $cardName`,
             {
-                $cardNames: processedDeck.cardRows.map(row => row.cardName),
+                $cardName: processedDeck.cardRows[0].cardName,
                 $eventId: eventId
             }
         ).then((rows) => {
@@ -98,11 +100,16 @@ async function loadDeckAndWrite(filename, eventId) {
             return rows[0].playerId;
         });
     } else {
-        playerId = await executeSelectOne(`SELECT id FROM player WHERE fullName = $playerFullName`, {$playerFullName: processedDeck.playerFullName}).then((row) => {
+        playerId = await executeSelectOne(`SELECT id FROM player WHERE fullName = $playerFullName`, { $playerFullName: processedDeck.playerFullName }).then((row) => {
             if (!row) {
                 throw `No player found with name ${processedDeck.playerFullName}`
             }
+            return row.id;
         });
+    }
+
+    if (playerId == null) {
+        throw "no player id"
     }
 
     for (let cardRow of processedDeck.cardRows) {
@@ -112,16 +119,18 @@ async function loadDeckAndWrite(filename, eventId) {
             {
                 $playerId: playerId,
                 $eventId: eventId,
-                $cardName: cardName
+                $cardName: cardRow.cardName
             }
         );
         if (matchingRow) {
-            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND cardName = $cardName AND isMain IS NULL;`);
+            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL;`, { $isMain: cardRow.isMain, $playerId: playerId, $eventId: eventId, $pickId: matchingRow.pickId });
         } else {
-            const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`).then((row) => row.newId);
+            const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
+                { $playerId: playerId, $eventId: eventId }
+            ).then((row) => row.newId) || 1;
             await executeRun(
-                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName);`, 
-                {$playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardNAme: cardRow.cardName}
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName);`,
+                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName }
             )
         }
     }
@@ -169,6 +178,10 @@ function processLog(draftLog) {
 }
 
 function processDeck(decklist) {
+    const nameMap = {
+        'Never/Return': 'Never // Return'
+    };
+
     decklist = decklist.replace(/\r/g, '');
 
     const nameCheckSplit = decklist.split('=\n');
@@ -176,25 +189,31 @@ function processDeck(decklist) {
 
     if (nameCheckSplit.length > 1) {
         playerFullName = nameCheckSplit[0].trim();
-        deckList = nameCheckSplit[1];
+        decklist = nameCheckSplit[1];
     }
 
-    const lines = decklist.split('\n').filter(line => 
+    const lines = decklist.split('\n').filter(line =>
         (!BASIC_REGEX.test(line) && (CARD_ROW_REGEX.test(line) || line === ''))
     );
-    
-    const sbBreakIndex = lines.findIndex('');
+
+    const sbBreakIndex = lines.findIndex(line => line === '');
 
     return {
-        cardRows:  lines.slice(0,sbBreakIndex).map(line => ({
-            cardName: line.match(CARD_ROW_REGEX)?.[1]?.trim(),
-            isMain: 1
-        })).concat(
-            lines.slice(sbBreakIndex+1).map(line => ({
-                cardName: line.match(CARD_ROW_REGEX)?.[1]?.trim(),
-                isMain: 0
-            }))
-        ).filter((row) => row.cardName !== null),
+        cardRows: lines.slice(0, sbBreakIndex).map(line => {
+            const mtgoName = line.match(CARD_ROW_REGEX)?.[1]?.trim();
+            return {
+                cardName: nameMap[mtgoName] || mtgoName,
+                isMain: 1
+            }
+        }).concat(
+            lines.slice(sbBreakIndex + 1).map(line => {
+                const mtgoName = line.match(CARD_ROW_REGEX)?.[1]?.trim();
+                return {
+                    cardName: nameMap[mtgoName] || mtgoName,
+                    isMain: 0
+                }
+            })
+        ).filter((row) => row.cardName !== undefined),
         playerFullName
     }
 }

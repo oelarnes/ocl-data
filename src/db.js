@@ -23,15 +23,9 @@ function getDb() {
 }
 
 function executeSelectOne(query, args) {
-    if (Array.isArray(args)) {
-        if (args.length && typeof(args[0]) === 'string') {
-            args = `('${args.join("', '")}')`
-        } else {
-            args = `(${args.join(', ')})`
-        }
-    }
+    const db = getDb();
+
     return new Promise((resolve, reject) => {
-        const db = getDb();
         db.get(`${query};`, args, (err, row) => {
             if (err) {
                 reject(err);
@@ -41,21 +35,13 @@ function executeSelectOne(query, args) {
         db.close();
     }).catch((err) => {
         console.log(err);
-        db.close()
     });
 }
 
 function executeSelectSome(query, args) {
-    if (Array.isArray(args)) {
-        if (args.length && typeof(args[0]) === 'string') {
-            args = `('${args.join("', '")}')`
-        } else {
-            args = `(${args.join(', ')})`
-        }
-    }
-    
+    const db = getDb();
     return new Promise((resolve, reject) => {
-        const db = getDb();
+
         db.all(`${query};`, args, (err, rows) => {
             if (err) {
                 reject(err);
@@ -65,7 +51,6 @@ function executeSelectSome(query, args) {
         db.close();
     }).catch((err) => {
         console.log(err);
-        db.close()
     });
 }
 
@@ -109,7 +94,6 @@ async function initializeDb() {
         });
     }).catch(err => {
         console.log(err);
-        db.close();
     });
 
     await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName) => {
@@ -122,10 +106,9 @@ async function initializeDb() {
                                 reject(err)
                             }
                             resolve()
-                        })
+                        });
                     }).catch(err => {
                         console.log(err);
-                        db.close();
                     })
                 })
             );
@@ -134,8 +117,8 @@ async function initializeDb() {
 
     db.close()
 
-    // await processAllEventFiles();
-    return 
+    await processAllEventFiles();
+    return
 }
 
 function insertStatement(tableName, dataRow) {
@@ -175,16 +158,17 @@ function executeInsertData(tableName, dataTable) {
     });
 }
 
-function executeRun(statement) {
+function executeRun(statement, args) {
     const db = getDb();
 
     return new Promise((resolve, reject) => {
-        db.run(statement, (err) => {
+        db.run(statement, args, (err) => {
             if (err) {
                 reject(err);
             }
             resolve()
         })
+        db.close();
     }).catch((err) => {
         console.log(err);
         db.close();

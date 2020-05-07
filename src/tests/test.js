@@ -62,8 +62,21 @@ Thrun, the Last Troll`)
 test('We can parse a decklist', () => {
     const processedDeck = processDeck(readFileSync('./test-data/test-decklist.txt', 'utf-8'));
 
-    expect(processedLog).toHaveProperty('fullPlayerName', null);
-    expect(processedLog.cardRows[0]).toHaveProperty('isMain', 1);
-    expect(processedLog.cardRows[0]).toHaveProperty('cardName', 'Griselbrand');
-    expect(processedLog.cardRows[26]).toHaveProperty('cardName', 'Bone Shredder');
+    expect(processedDeck).toHaveProperty('playerFullName', undefined);
+    expect(processedDeck.cardRows[0]).toHaveProperty('isMain', 1);
+    expect(processedDeck.cardRows[0]).toHaveProperty('cardName', 'Griselbrand');
+    expect(processedDeck.cardRows[26]).toHaveProperty('cardName', 'Bone Shredder');
+    expect(processedDeck.cardRows[27]).toHaveProperty('isMain', 0);
+    expect(processedDeck.cardRows.length).toEqual(45);
+});
+
+test('We can parse a decklist with a name row', () => {
+    const processedDeck = processDeck(readFileSync('./test-data/test-decklist-2.txt', 'utf-8'));
+
+    expect(processedDeck).toHaveProperty('playerFullName', 'Pythagoras Rapscallion');
+    expect(processedDeck.cardRows[0]).toHaveProperty('isMain', 1);
+    expect(processedDeck.cardRows[0]).toHaveProperty('cardName', 'Griselbrand');
+    expect(processedDeck.cardRows[26]).toHaveProperty('cardName', 'Bone Shredder');
+    expect(processedDeck.cardRows[27]).toHaveProperty('isMain', 0);
+    expect(processedDeck.cardRows.length).toEqual(45);
 })
