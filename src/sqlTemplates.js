@@ -3,25 +3,26 @@ const dropEventTable = 'DROP TABLE IF EXISTS event;';
 const dropEntryTable = 'DROP TABLE IF EXISTS entry;';
 const dropPairingTable = 'DROP TABLE IF EXISTS pairing;';
 const dropPickTable = 'DROP TABLE IF EXISTS pick;';
+const dropCubeTable = `DROP TABLE IF EXISTS cube;`;
 // Create Table
 const createPlayerTable = `
 CREATE TABLE IF NOT EXISTS player(
-    id text PRIMARY KEY,
-    fullName text UNIQUE,
-    discordHandle text,
-    discordIdExt text,
-    timeZone text,
-    pronouns text,
-    email text
+    id TEXT PRIMARY KEY,
+    fullName TEXT UNIQUE,
+    discordHandle TEXT,
+    discordIdExt TEXT,
+    timeZone TEXT,
+    pronouns TEXT,
+    email TEXT
 );`;
 const createEventTable = `
 CREATE TABLE IF NOT EXISTS event(
-    id text PRIMARY KEY,
-    prizeType text,
-    draftDate text,
-    completeDate text, 
-    cubeId text, 
-    season text
+    id TEXT PRIMARY KEY,
+    prizeType TEXT,
+    draftDate TEXT,
+    completeDate TEXT, 
+    cubeId TEXT, 
+    season TEXT
 );`;
 const createEntryTable= ` 
 CREATE TABLE IF NOT EXISTS entry(
@@ -63,7 +64,15 @@ CREATE TABLE IF NOT EXISTS pick(
     otherCardNamesString TEXT,
     isMain INT,
     PRIMARY KEY(playerId, eventId, pickId)
-)`
+)`;
+const createCubeTable = `
+CREATE TABLE IF NOT EXISTS cube(
+    id TEXT PRIMARY KEY,
+    cubeType TEXT,
+    activeDate TEXT,
+    inactiveDate TEXT,
+    listString TEXT
+)`;
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
@@ -174,18 +183,23 @@ const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matc
 const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
     FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
 const selectPicksForEntry = `SELECT * FROM pick WHERE playerId = $playerId AND eventId = $eventId ORDER BY packNum ASC, pickNum ASC`;
-
+const selectPickOrderByCard = `SELECT SUM(pickNum * 1.0)/count(pickNum) FROM pick 
+    WHERE pickNum IS NOT NULL AND cardName = $cardName`;
+const selectPickOrderByCardForPlayer = `SELECT SUM(pickNum * 1.0)/count(pickNum) FROM pick 
+    WHERE pickNum IS NOT NULL AND cardName = $cardName AND playerId = $playerId`;
 export {
     dropPlayerTable,
     dropEventTable,
     dropEntryTable,
     dropPairingTable,
     dropPickTable,
+    dropCubeTable,
     createPlayerTable,
     createEventTable,
     createEntryTable,
     createPairingTable,
     createPickTable,
+    createCubeTable,
     selectPlayer,
     selectEvent,
     selectEntry,
@@ -214,5 +228,7 @@ export {
     selectStandingsBySeason,
     selectStandingForPlayerAllTime,
     selectStandingForPlayerBySeason,
-    selectPicksForEntry
+    selectPicksForEntry,
+    selectPickOrderByCard,
+    selectPickOrderByCardForPlayer
 };

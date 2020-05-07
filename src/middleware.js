@@ -262,8 +262,7 @@ const resolvers = {
     },
     Card: {
         avgPickOrder(parent) {
-            /* TODO: this */
-            return executeSelectOne(`SELECT `)
+            return executeSelectOne()
         }
     }
 };
