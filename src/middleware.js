@@ -234,6 +234,24 @@ const resolvers = {
             return executeSelectOne(selectPlayer, { $playerId: parent.playerId })
         }
     },
+    Pick: {
+        otherCardNames(parent) {
+            return parent.otherCardNamesString.split('\n');
+        },
+        poolAsOfNames(parent) {
+            if (parent.pickNum === undefined || parent.packNum === undefined) {
+                return undefined;
+            }
+            return executeSelectSome(`SELECT cardName FROM pick WHERE playerId = $playerId AND eventId = $eventId AND (packNum < $packNum OR (packNum = $packNum AND pickNum < $pickNum))`,
+                {
+                    $playerId: parent.playerId,
+                    $eventId: parent.eventId,
+                    $packNum: parent.packNum,
+                    $pickNum: parent.pickNum
+                }
+            ).then(rows => rows.map((row) => row.cardName));
+        }
+    },
     Deck: {
         main(parent) {
             return parent.pool.filter(row => row.isMain);
