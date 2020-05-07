@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS pick(
     otherCardNamesString TEXT,
     isMain INT,
     PRIMARY KEY(playerId, eventId, pickId)
-)`;
+);`;
 const createCubeTable = `
 CREATE TABLE IF NOT EXISTS cube(
     id TEXT PRIMARY KEY,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS cube(
     activeDate TEXT,
     inactiveDate TEXT,
     listString TEXT
-)`;
+);`;
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
@@ -92,17 +92,17 @@ const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany` 
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany` 
-const selectEntryWins = `SELECT p1.wins+p2.wins AS wins FROM (
-        SELECT SUM(p1MatchWin) AS wins FROM pairing WHERE p1Id = $playerId and eventId = $eventId
-    ) p1 JOIN (
-        SELECT SUM(p2MatchWin) AS wins FROM pairing WHERE p2Id = $playerId and eventId = $eventId
-    ) p2
+const selectEntryWins = `SELECT SUM(wins) AS wins FROM (
+        SELECT p1MatchWin AS wins FROM pairing WHERE p1Id = $playerId AND eventId = $eventId
+    UNION ALL
+        SELECT p2MatchWin AS wins FROM pairing WHERE p2Id = $playerID AND eventId = $eventId
+    )
 `;
-const selectEntryLosses = `SELECT p1.losses+p2.losses AS losses FROM (
-    SELECT SUM(p1MatchWin) AS losses FROM pairing WHERE p2Id = $playerId and eventId = $eventId
-) p2 JOIN (
-    SELECT SUM(p2MatchWin) AS losses FROM pairing WHERE p1Id = $playerId and eventId = $eventId
-) p1
+const selectEntryLosses =`SELECT SUM(losses) AS losses FROM (
+    SELECT p2MatchWin AS losses FROM pairing WHERE p1Id = $playerId AND eventId = $eventId
+UNION ALL
+    SELECT p1MatchWin AS losses FROM pairing WHERE p2Id = $playerID AND eventId = $eventId
+)
 `;
 const selectOpenEntriesByPlayer = `SELECT * FROM entry WHERE playerId = $playerId AND isOpen = 1`;
 const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId`;
@@ -182,11 +182,18 @@ const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matc
     FROM (${selectStandingsAllTime}) s WHERE playerId = $playerId`;
 const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank
     FROM (${selectStandingsBySeason}) s WHERE playerId = $playerId`;
-const selectPicksForEntry = `SELECT * FROM pick WHERE playerId = $playerId AND eventId = $eventId ORDER BY packNum ASC, pickNum ASC`;
-const selectPickOrderByCard = `SELECT SUM(pickNum * 1.0)/count(pickNum) FROM pick 
-    WHERE pickNum IS NOT NULL AND cardName = $cardName`;
-const selectPickOrderByCardForPlayer = `SELECT SUM(pickNum * 1.0)/count(pickNum) FROM pick 
-    WHERE pickNum IS NOT NULL AND cardName = $cardName AND playerId = $playerId`;
+const selectPicksForEntry = `SELECT * FROM pick WHERE playerId = $playerId AND eventId = $eventId ORDER BY pickId ASC`;
+const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum) AS avgPickOrder FROM pick 
+    JOIN event ON pick.eventId = event.id
+    JOIN cube ON event.cubeId = cube.id
+    WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
+    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
+const selectPickOrderByCardForPlayer = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum) AS avgPickOrder FROM pick 
+    JOIN event ON pick.eventId = event.id
+    JOIN cube ON event.cubeId = cube.id
+    WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
+    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName AND pick.playerId = $playerId`;
+const selectCube = `SELECT * FROM cube WHERE id = $cubeId`;
 export {
     dropPlayerTable,
     dropEventTable,
@@ -203,6 +210,7 @@ export {
     selectPlayer,
     selectEvent,
     selectEntry,
+    selectCube,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByIdDesc,
     selectPlayersOrderByNameAsc,

@@ -27,7 +27,7 @@ type OCLEvent {
     id: ID!
     prizeType: String
     cubeId: String
-    # cube: Cube
+    cube: Cube
     season: String
     completeDate: String
     draftDate: String
@@ -112,7 +112,7 @@ type Deck {
 #     card: Card
 # }
 type Card {
-    cardName: String!
+    name: String!
     avgPickOrder(cubeTypes: [String], forPlayerId: String): Float
 #     powerIndex: Float
     mainDeckPct: Float
@@ -120,11 +120,24 @@ type Card {
     inEventPoolCount: Int 
     matchWinsAsDrafted(cubeTypes: [String], since: String): Int
     matchLossesAsDrafted(cubeTypes: [String], since: String): Int
-#     isCurrentlyIn(cubeName: String): Int
-#     cubesIn(asOf: String): [Cube]    
+    bayesianWinRate(cubeTypes: [String], since: String, vol: Float): Float
+    isCurrentlyIn(cubeName: String): Int
+    cubesIn(asOf: String): [Cube]    
     recentEntries(howMany: Int): [Entry]
 #     ownedMTGOCard(stylePref: String): MTGOCard
-# }
+}
+
+type Cube {
+    id: ID!
+    cubeType: String
+    activeDate: String
+    inactiveDate: String
+    listString: String
+    cardNames: [String]
+    cards: [Card]
+    # ownedMTGOCards: [MTGOCard]
+    # ownedDekExport: String
+}
 
 type Query {
     player(id: ID!): Player
@@ -134,5 +147,5 @@ type Query {
     events(howMany: Int, after: String, asc: Boolean, season: String): [OCLEvent]
     entry(playerId: ID!, eventId: ID!): Entry
     standings(season: String, howMany: Int, after: Int): [Standing]
-    card(cardName: String): Card
+    card(name: String): Card
 }

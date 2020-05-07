@@ -6,6 +6,7 @@ import {
     selectPlayer,
     selectEntry,
     selectEvent,
+    selectCube,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByNameAsc,
     selectPlayerByHandleSearch,
@@ -28,7 +29,9 @@ import {
     selectStandingForPlayerAllTime,
     selectStandingForPlayerBySeason,
     selectEntryLosses,
-    selectPicksForEntry
+    selectPicksForEntry,
+    selectPickOrderByCard,
+    selectPickOrderByCardForPlayer
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
@@ -96,6 +99,9 @@ const resolvers = {
                 :
                 [selectStandingsBySeason, { $season: season, $howMany: howMany, $after: after }];
             return executeSelectSome(query, args);
+        },
+        card(_parent, { name }) {
+            return { name }
         }
     },
     Player: {
@@ -153,6 +159,9 @@ const resolvers = {
                 [selectPairingsByEventAndRound, { $eventId: parent.id, $roundNum: roundNum }];
 
             return executeSelectSome(query, args);
+        },
+        cube(parent) {
+            return executeSelectOne(selectCube, { $cubeId: parent.cubeId });
         }
     },
     Entry: {
@@ -261,8 +270,57 @@ const resolvers = {
         }
     },
     Card: {
-        avgPickOrder(parent) {
-            return executeSelectOne()
+        avgPickOrder(parent, { cubeTypes = ['Classic', 'Powered', 'Interactive'], forPlayerId }) {
+            const ctArgArray = [
+                ...cubeTypes,
+                ...new Array(5).fill('_SENTINEL_CUBE_TYPE_XX')
+            ];
+
+            const args = {
+                $ct1: ctArgArray[0],
+                $ct2: ctArgArray[1],
+                $ct3: ctArgArray[2],
+                $ct4: ctArgArray[3],
+                $ct5: ctArgArray[4],
+                $cardName: parent.name
+            }
+
+            if (forPlayerId !== undefined) {
+                return executeSelectOne(selectPickOrderByCardForPlayer, {
+                    ...args,
+                    $playerId: forPlayerId
+                }).then(row => {
+                    return row?.avgPickOrder
+                });
+            }
+            return executeSelectOne(selectPickOrderByCard, args).then(row => {
+                return row?.avgPickOrder
+            });
+        },
+        mainDeckPct(parent, { cubeTypes = ['Classic', 'Powered', 'Interactive'] }) {
+            const ctArgArray = [
+                ...cubeTypes,
+                ...new Array(5).fill('_SENTINEL_CUBE_TYPE_XX')
+            ];
+
+            return executeSelectOne(selectMainDeckPctByCard, {
+                $ct1: ctArgArray[0],
+                $ct2: ctArgArray[1],
+                $ct3: ctArgArray[2],
+                $ct4: ctArgArray[3],
+                $ct5: ctArgArray[4],
+                $cardName: parent.name
+            }).then(row => {
+                return row?.avgPickOrder
+            });
+        }
+    },
+    Cube: {
+        cardNames(parent) {
+            return parent.listString.trim().split('\n').map(w => w.trim());
+        },
+        cards(parent) {
+            return resolvers.Cube.cardNames(parent).map(name => ({ name }));
         }
     }
 };

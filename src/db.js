@@ -7,11 +7,13 @@ import {
     dropPairingTable,
     dropPlayerTable,
     dropPickTable,
+    dropCubeTable,
     createEntryTable,
     createEventTable,
     createPairingTable,
     createPlayerTable,
-    createPickTable
+    createPickTable,
+    createCubeTable
 } from './sqlTemplates';
 import { processAllEventFiles } from './draftLogs';
 
@@ -69,7 +71,7 @@ function replaceStatements(tableName) {
     }
 }
 
-async function initializeDb() {
+async function initializeDb(rebuildPicks=false) {
     console.log(`Connecting to sqlite3 database at ${DB_SPEC}`);
     const db = getDb();
 
@@ -79,11 +81,11 @@ async function initializeDb() {
                 .run(dropPlayerTable)
                 .run(dropEntryTable)
                 .run(dropPairingTable)
-                .run(dropPickTable)
+                .run(dropCubeTable)
                 .run(createEventTable)
                 .run(createPlayerTable)
                 .run(createPairingTable)
-                .run(createPickTable)
+                .run(createCubeTable)
                 .run(createEntryTable, [], (err) => {
                     if (err) {
                         reject(err);
@@ -96,7 +98,8 @@ async function initializeDb() {
         console.log(err);
     });
 
-    await Promise.all(['player', 'event', 'entry', 'pairing'].map((tableName) => {
+
+    await Promise.all(['player', 'event', 'entry', 'pairing', 'cube'].map((tableName) => {
         return getDataTable(tableName).then((values) => {
             return Promise.all(
                 replaceStatements(tableName)(values).map(statement => {
@@ -115,9 +118,29 @@ async function initializeDb() {
         });
     }));
 
-    db.close()
+    if (rebuildPicks) {
+        await new Promise((resolve, reject) => {
+            db.serialize(() => {
+                db.run(dropPickTable)
+                    .run(createPickTable, [], (err) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    })
+            })
+        }).catch(err => {
+            console.log(err);
+        });
+    }
 
-    await processAllEventFiles();
+    db.close()
+    
+    if (rebuildPicks) {
+        await processAllEventFiles(); 
+    }
+
     return
 }
 
