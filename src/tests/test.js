@@ -1,7 +1,7 @@
 import { getDb, executeSelectOne, executeInsertData } from "../db";
 import { processLog } from '../draftLogs';
 import { readFileSync } from 'fs';
-import { processDeck } from "../../lib/draftLogs";
+import { processDeck, fileIsDecklist } from "../../lib/draftLogs";
 
 afterAll(() => {
     const db = getDb();
@@ -59,7 +59,7 @@ test('We can parse a draftlog', () => {
 Thrun, the Last Troll`)
 });
 
-test('We can parse a decklist', () => {
+test('We can parse a decklist', () => { 
     const processedDeck = processDeck(readFileSync('./test-data/test-decklist.txt', 'utf-8'));
 
     expect(processedDeck).toHaveProperty('playerFullName', undefined);
@@ -79,4 +79,9 @@ test('We can parse a decklist with a name row', () => {
     expect(processedDeck.cardRows[26]).toHaveProperty('cardName', 'Bone Shredder');
     expect(processedDeck.cardRows[27]).toHaveProperty('isMain', 0);
     expect(processedDeck.cardRows.length).toEqual(45);
+});
+
+test('We can recognize decklists', () => {
+    const filename = './test-data/test-decklists-2.txt';
+    expect(fileIsDecklist(filename)).toBe(true);
 })

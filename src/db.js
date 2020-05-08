@@ -185,7 +185,7 @@ function executeRun(statement, args) {
     const db = getDb();
 
     return new Promise((resolve, reject) => {
-        db.run(statement, args, (err) => {
+        db.run(`${statement};`, args, (err) => {
             if (err) {
                 reject(err);
             }

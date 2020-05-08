@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS event(
     cubeId TEXT, 
     season TEXT
 );`;
-const createEntryTable= ` 
+const createEntryTable = ` 
 CREATE TABLE IF NOT EXISTS entry(
     playerId TEXT,
     eventId TEXT,
@@ -77,33 +77,42 @@ CREATE TABLE IF NOT EXISTS cube(
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
 const selectEntry = `SELECT * FROM entry WHERE eventId = $eventId and playerId = $playerId`;
+const selectCube = `SELECT * FROM cube WHERE id = $cubeId`;
 const selectPlayersOrderByIdAsc = `SELECT * FROM player WHERE id > $after ORDER BY id ASC LIMIT $howMany`;
 const selectPlayersOrderByIdDesc = `SELECT * FROM player WHERE id < $after ORDER BY id DESC LIMIT $howMany`;
 const selectPlayersOrderByNameAsc = `SELECT * FROM player WHERE fullName > $after ORDER BY fullName ASC LIMIT $howMany`;
 const selectPlayersOrderByNameDesc = `SELECT * FROM player WHERE fullName < $after ORDER BY fullName DESC LIMIT $howMany`;
 const selectPlayerQps = `SELECT SUM(entry.qpsAwarded) as qps FROM entry JOIN event ON entry.eventId = event.id
     WHERE entry.playerId = $playerId AND event.season = $season`;
-const selectPlayersByNameSearch = `SELECT * FROM player WHERE fullName like '%' || $byName || '%'`;
-const selectPlayerByHandleSearch = `SELECT * FROM player WHERE discordHandle like '%' || $byHandle || '%'`;
+const selectPlayersByNameOrHandleSearch = `SELECT * FROM player WHERE fullName LIKE '%' || $byName || '%' OR discordHandle LIKE '%' || $byHandle || '%'`;
 const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
 const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
 const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId`;
 const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
-    WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany` 
+    WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany`
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
-    WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany` 
+    WHERE event.draftDate < $after AND entry.playerId = $playerId ORDER BY event.draftDate DESC LIMIT $howMany`
 const selectEntryWins = `SELECT SUM(wins) AS wins FROM (
         SELECT p1MatchWin AS wins FROM pairing WHERE p1Id = $playerId AND eventId = $eventId
     UNION ALL
-        SELECT p2MatchWin AS wins FROM pairing WHERE p2Id = $playerID AND eventId = $eventId
+        SELECT p2MatchWin AS wins FROM pairing WHERE p2Id = $playerId AND eventId = $eventId
     )
 `;
-const selectEntryLosses =`SELECT SUM(losses) AS losses FROM (
+const selectEntryLosses = `SELECT SUM(losses) AS losses FROM (
     SELECT p2MatchWin AS losses FROM pairing WHERE p1Id = $playerId AND eventId = $eventId
 UNION ALL
-    SELECT p1MatchWin AS losses FROM pairing WHERE p2Id = $playerID AND eventId = $eventId
+    SELECT p1MatchWin AS losses FROM pairing WHERE p2Id = $playerId AND eventId = $eventId 
 )
 `;
+const selectEntriesByCardName = `SELECT entry.* FROM entry JOIN pick 
+    ON entry.eventId = pick.eventId AND entry.playerId = pick.playerId
+    JOIN event ON entry.eventId = event.id
+    WHERE
+        pick.cardName = $cardName
+    ORDER BY
+        event.draftDate DESC
+    LIMIT $howMany
+    `;
 const selectOpenEntriesByPlayer = `SELECT * FROM entry WHERE playerId = $playerId AND isOpen = 1`;
 const selectPairingsByEvent = `SELECT * FROM pairing WHERE eventId = $eventId`;
 const selectPairingsByEventAndRound = `SELECT * FROM pairing WHERE eventId = $eventId AND roundNum = $roundNum`;
@@ -188,12 +197,58 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
-const selectPickOrderByCardForPlayer = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum) AS avgPickOrder FROM pick 
+const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 100.0)/COUNT(pick.isMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
-    WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
-    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName AND pick.playerId = $playerId`;
-const selectCube = `SELECT * FROM cube WHERE id = $cubeId`;
+    WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+    AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`;
+const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 100.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
+    JOIN event ON pick.eventId = event.id
+    JOIN cube ON event.cubeId = cube.id
+    WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName
+`;
+const selectInPoolCountByCard = `SELECT COUNT(pick.eventId) AS inPoolCount FROM pick
+JOIN event ON pick.eventId = event.id
+JOIN cube ON event.cubeId = cube.id
+WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+AND pick.cardName = $cardName
+`;
+const selectMatchWinsByCard = `SELECT SUM(wins) as wins FROM (
+    SELECT pairing.p1MatchWin AS wins FROM pairing JOIN pick 
+        ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p1Id
+        JOIN event ON event.id = pairing.eventId
+        JOIN cube ON event.cubeId = cube.id
+        WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+        AND pick.cardName = $cardName
+    UNION ALL
+    SELECT pairing.p2MatchWin AS wins FROM pairing JOIN pick
+        ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p2Id
+        JOIN event ON event.id = pairing.eventId
+        JOIN cube ON event.cubeId = cube.id
+        WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+        AND pick.cardName = $cardName
+    )   
+`;
+const selectMatchLossesByCard = `SELECT SUM(losses) as losses FROM (
+    SELECT pairing.p2MatchWin AS losses FROM pairing JOIN pick 
+        ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p1Id
+        JOIN event ON event.id = pairing.eventId
+        JOIN cube ON event.cubeId = cube.id
+        WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+        AND pick.cardName = $cardName
+    UNION ALL
+    SELECT pairing.p1MatchWin AS losses FROM pairing JOIN pick
+        ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p2Id
+        JOIN event ON event.id = pairing.eventId
+        JOIN cube ON event.cubeId = cube.id
+        WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
+        AND pick.cardName = $cardName
+    )   
+`; 
+const selectCubesForCard = `SELECT * FROM cube
+    WHERE listString LIKE '%' || $cardName || '%'`
+
 export {
     dropPlayerTable,
     dropEventTable,
@@ -216,14 +271,14 @@ export {
     selectPlayersOrderByNameAsc,
     selectPlayersOrderByNameDesc,
     selectPlayerQps,
-    selectPlayersByNameSearch,
-    selectPlayerByHandleSearch,
+    selectPlayersByNameOrHandleSearch,
     selectEventsAsc,
     selectEventsDesc,
     selectEntriesByEvent,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntryWins,
+    selectEntriesByCardName,
     selectOpenEntriesByPlayer,
     selectEntryLosses,
     selectPairingsByEvent,
@@ -238,5 +293,10 @@ export {
     selectStandingForPlayerBySeason,
     selectPicksForEntry,
     selectPickOrderByCard,
-    selectPickOrderByCardForPlayer
+    selectIsMainPctByCard,
+    selectWheelPctByCard,
+    selectInPoolCountByCard,
+    selectMatchWinsByCard,
+    selectMatchLossesByCard,
+    selectCubesForCard
 };

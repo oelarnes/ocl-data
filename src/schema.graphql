@@ -85,13 +85,13 @@ type Pick {
     packNum: Int
     pickNum: Int
     cardName: String
-    # card: Card
+    card: Card
     otherCardNamesString: String
     otherCardNames: [String]
-    # otherCards: [Card]
+    otherCards: [Card]
     isMain: Int
     poolAsOfNames: [String]
-    # poolAsOf: [Card]
+    poolAsOf: [Card]
 }
 type Deck {
     pool: [Pick]
@@ -113,16 +113,16 @@ type Deck {
 # }
 type Card {
     name: String!
-    avgPickOrder(cubeTypes: [String], forPlayerId: String): Float
+    avgPickOrder(cubeTypes: [String]): Float
+#     pickIndex: Float
 #     powerIndex: Float
-    mainDeckPct: Float
-    wheelPct: Float
-    inEventPoolCount: Int 
-    matchWinsAsDrafted(cubeTypes: [String], since: String): Int
-    matchLossesAsDrafted(cubeTypes: [String], since: String): Int
-    bayesianWinRate(cubeTypes: [String], since: String, vol: Float): Float
-    isCurrentlyIn(cubeName: String): Int
-    cubesIn(asOf: String): [Cube]    
+    mainDeckPct(cubeTypes: [String]): Float
+    wheelPct(cubeTypes: [String]): Float
+    inEventPoolCount(cubeTypes: [String]): Int 
+    matchWinsInPool(cubeTypes: [String]): Int
+    matchLossesInPool(cubeTypes: [String]): Int
+    bayesianWinRate(cubeTypes: [String], vol: Float): Float
+    cubesIn: [Cube]    
     recentEntries(howMany: Int): [Entry]
 #     ownedMTGOCard(stylePref: String): MTGOCard
 }
@@ -148,4 +148,4 @@ type Query {
     entry(playerId: ID!, eventId: ID!): Entry
     standings(season: String, howMany: Int, after: Int): [Standing]
     card(name: String): Card
-}
+} 

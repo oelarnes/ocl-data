@@ -9,14 +9,14 @@ import {
     selectCube,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByNameAsc,
-    selectPlayerByHandleSearch,
-    selectPlayersByNameSearch,
+    selectPlayersByNameOrHandleSearch,    
     selectEventsDesc,
     selectEventsAsc,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntriesByEvent,
     selectEntryWins,
+    selectEntriesByCardName,
     selectOpenEntriesByPlayer,
     selectPairingsByPlayerPairDesc,
     selectPairingsByPlayerPairAsc,
@@ -31,19 +31,42 @@ import {
     selectEntryLosses,
     selectPicksForEntry,
     selectPickOrderByCard,
-    selectPickOrderByCardForPlayer
+    selectIsMainPctByCard,
+    selectWheelPctByCard,
+    selectInPoolCountByCard,
+    selectMatchWinsByCard,
+    selectMatchLossesByCard,
+    selectCubesForCard
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
+import { ALL } from "dns";
+import { match } from "assert";
 
 const MAX_RESULTS = 10000;
 const MAX_DATE = "9999-12-31";
 const MIN_DATE = "0000-00-00";
+const ALL_CUBE_TYPES = ['Classic', 'Interactive', 'Powered'];
 
 const typeDefs = readFileSync("./src/schema.graphql", "utf-8");
 
 function getDateAfter(after, asc) {
     return after || (asc && MIN_DATE) || (!asc && MAX_DATE);
+}
+
+function cubeTypeArgs(cubeTypes) {
+    const ctArgArray = [
+        ...cubeTypes,
+        ...new Array(5).fill('_SENTINEL_CUBE_TYPE_XX')
+    ];
+
+    return {
+        $ct1: ctArgArray[0],
+        $ct2: ctArgArray[1],
+        $ct3: ctArgArray[2],
+        $ct4: ctArgArray[3],
+        $ct5: ctArgArray[4]
+    };
 }
 
 const resolvers = {
@@ -64,15 +87,8 @@ const resolvers = {
                 $howMany: howMany,
             });
         },
-        async playerSearch(_parent, { byName, byHandle }) {
-            const byNameResults = await (byName === undefined) ? [] :
-                executeSelectSome(selectPlayersByNameSearch, { $byName: byName });
-
-            const byHandleResults = await (byHandle === undefined) ? [] :
-                executeSelectSome(selectPlayerByHandleSearch, { $byHandle: byHandle });
-
-            return byNameResults;
-            // return [...byNameResults, ...byHandleResults];
+        playerSearch(_parent, { byName = '_FULLNAME_SENTINEL_XX', byHandle = '_HANDLE_SENTINEL_XX' }) {
+            return executeSelectSome(selectPlayersByNameOrHandleSearch, { $byName: byName, $byHandle: byHandle })
         },
         event(_parent, { id }) {
             return executeSelectOne(selectEvent, { $eventId: id });
@@ -260,6 +276,21 @@ const resolvers = {
                     $pickNum: parent.pickNum
                 }
             ).then(rows => rows.map((row) => row.cardName));
+        },
+        card(parent) {
+            return {
+                name: parent.cardName
+            }
+        },
+        poolAsOf(parent) {
+            return resolvers.Pick.poolAsOfNames(parent).map(name => ({
+                name
+            }))
+        },
+        otherCards(parent) {
+            return resolvers.Pick.otherCardNames(parent).map(name => ({
+                name
+            }));
         }
     },
     Deck: {
@@ -271,50 +302,73 @@ const resolvers = {
         }
     },
     Card: {
-        avgPickOrder(parent, { cubeTypes = ['Classic', 'Powered', 'Interactive'], forPlayerId }) {
-            const ctArgArray = [
-                ...cubeTypes,
-                ...new Array(5).fill('_SENTINEL_CUBE_TYPE_XX')
-            ];
-
+        avgPickOrder(parent, { cubeTypes = ALL_CUBE_TYPES }) {
             const args = {
-                $ct1: ctArgArray[0],
-                $ct2: ctArgArray[1],
-                $ct3: ctArgArray[2],
-                $ct4: ctArgArray[3],
-                $ct5: ctArgArray[4],
+                ...cubeTypeArgs(cubeTypes),
                 $cardName: parent.name
-            }
+            };
 
-            if (forPlayerId !== undefined) {
-                return executeSelectOne(selectPickOrderByCardForPlayer, {
-                    ...args,
-                    $playerId: forPlayerId
-                }).then(row => {
-                    return row?.avgPickOrder
-                });
-            }
             return executeSelectOne(selectPickOrderByCard, args).then(row => {
                 return row?.avgPickOrder
             });
         },
-        mainDeckPct(parent, { cubeTypes = ['Classic', 'Powered', 'Interactive'] }) {
-            const ctArgArray = [
-                ...cubeTypes,
-                ...new Array(5).fill('_SENTINEL_CUBE_TYPE_XX')
-            ];
-
-            return executeSelectOne(selectMainDeckPctByCard, {
-                $ct1: ctArgArray[0],
-                $ct2: ctArgArray[1],
-                $ct3: ctArgArray[2],
-                $ct4: ctArgArray[3],
-                $ct5: ctArgArray[4],
+        mainDeckPct(parent, { cubeTypes = ALL_CUBE_TYPES}) {
+            const args = {
+                ...cubeTypeArgs(cubeTypes),
                 $cardName: parent.name
-            }).then(row => {
-                return row?.avgPickOrder
+            };
+            return executeSelectOne(selectIsMainPctByCard, args).then(row => {
+                return row?.isMainPct
             });
+        },
+        recentEntries(parent, {howMany = MAX_RESULTS}) {
+            return executeSelectSome(selectEntriesByCardName, { 
+                $cardName: parent.name, $howMany: howMany
+            });
+        },
+        wheelPct(parent, {cubeTypes = ALL_CUBE_TYPES}) {
+            const args = {
+                ...cubeTypeArgs(cubeTypes),
+                $cardName: parent.name
+            };
+
+            return executeSelectOne(selectWheelPctByCard, args).then(row => row?.wheelPct);
+        },
+        inEventPoolCount(parent, {cubeTypes = ALL_CUBE_TYPES}) {
+            const args = {
+                ...cubeTypeArgs(cubeTypes),
+                $cardName: parent.name
+            };
+
+            return executeSelectOne(selectInPoolCountByCard, args).then(row => row?.inPoolCount);
+        },
+        matchWinsInPool(parent, {cubeTypes = ALL_CUBE_TYPES}) {
+            const args = {
+                ...cubeTypeArgs(cubeTypes),
+                $cardName: parent.name
+            };
+
+            return executeSelectOne(selectMatchWinsByCard, args).then(row => row?.wins);
+        },
+        matchLossesInPool(parent, {cubeTypes = ALL_CUBE_TYPES}) {
+            const args = {
+                ...cubeTypeArgs(cubeTypes),
+                $cardName: parent.name
+            };
+
+            return executeSelectOne(selectMatchLossesByCard, args).then(row => row?.losses);
+        },
+        async bayesianWinRate(parent, {cubeTypes = ALL_CUBE_TYPES, vol=0.03}) {
+            const wins = await resolvers.Card.matchWinsInPool(parent, cubeTypes);
+            const losses = await resolvers.Card.matchLossesInPool(parent, cubeTypes);
+            const priorMatches = Math.pow(vol, -2) / 4 - 1;
+
+            return (wins + priorMatches/2) / (wins + losses + priorMatches);
+        },
+        cubesIn(parent) {
+            return executeSelectSome(selectCubesForCard, {$cardName: parent.name});
         }
+
     },
     Cube: {
         cardNames(parent) {

@@ -1,7 +1,6 @@
 import { readFileSync, readdirSync } from 'fs';
-import { executeInsertData, executeSelectSome, executeSelectOne, getDb } from './db';
+import { executeInsertData, executeSelectSome, executeSelectOne, executeRun } from './db';
 import path from 'path';
-import { executeRun } from '../lib/db';
 
 const EVENT_FOLDER = './data/events';
 const SELECTION_REGEX = /--> (.*)/;
@@ -9,7 +8,7 @@ const CARD_ROW_REGEX = /^1 (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 
 function fileIsDecklist(filename) {
-    const fileContents = readFileSync(filename, 'utf-8');
+    const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '');
     const deckLines = fileContents.split('=\n').slice(-1)[0].split('\n').map(r => r.trim())
     return deckLines.filter(row => CARD_ROW_REGEX.test(row) && !BASIC_REGEX.test(row)).length <= 45
         && deckLines.filter(row => !CARD_ROW_REGEX.test(row) && !BASIC_REGEX.test(row)).length <= 2;
@@ -32,25 +31,30 @@ async function processAllEventFiles() {
     })
 
     for (let eventId of allFolders) {
-        const eventPath = path.join(EVENT_FOLDER, eventId)
-        const txtFilePaths = readdirSync(eventPath).filter(item => /\.txt$/.test(item)).map(item => path.join(eventPath, item));
+        await processOneEvent(eventId);
+    }
+ 
+    return;
+}
 
-        const logFilePaths = txtFilePaths.filter(fileIsDraftLog)
-        const deckFilePaths = txtFilePaths.filter(fileIsDecklist)
+async function processOneEvent(eventId) {
+    const eventPath = path.join(EVENT_FOLDER, eventId)
+    const txtFilePaths = readdirSync(eventPath).filter(item => /\.txt$/.test(item)).map(item => path.join(eventPath, item));
 
-        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
-            .then((rows) => rows.map((row) => row.playerId));
+    const logFilePaths = txtFilePaths.filter(fileIsDraftLog)
+    const deckFilePaths = txtFilePaths.filter(fileIsDecklist)
 
-        for (let filename of logFilePaths) {
-            await loadLogAndWrite(filename, eventId, seatings);
-        }
+    const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
+        .then((rows) => rows.map((row) => row.playerId));
 
-        for (let filename of deckFilePaths) {
-            await loadDeckAndWrite(filename, eventId);
-        }
+    for (let filename of logFilePaths) {
+        await loadLogAndWrite(filename, eventId, seatings);
     }
 
-    return
+    for (let filename of deckFilePaths) {
+        await loadDeckAndWrite(filename, eventId);
+    }
+    return;
 }
 
 async function loadLogAndWrite(filename, eventId, seatings) {
@@ -108,10 +112,6 @@ async function loadDeckAndWrite(filename, eventId) {
         });
     }
 
-    if (playerId == null) {
-        throw "no player id"
-    }
-
     for (let cardRow of processedDeck.cardRows) {
         // select the first row of this entry with matching cardname and no main/sb info
         const matchingRow = await executeSelectOne(
@@ -123,13 +123,13 @@ async function loadDeckAndWrite(filename, eventId) {
             }
         );
         if (matchingRow) {
-            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL;`, { $isMain: cardRow.isMain, $playerId: playerId, $eventId: eventId, $pickId: matchingRow.pickId });
+            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`, { $isMain: cardRow.isMain, $playerId: playerId, $eventId: eventId, $pickId: matchingRow.pickId });
         } else {
             const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
                 { $playerId: playerId, $eventId: eventId }
             ).then((row) => row.newId) || 1;
             await executeRun(
-                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName);`,
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName)`,
                 { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName }
             )
         }
@@ -221,5 +221,7 @@ function processDeck(decklist) {
 export {
     processAllEventFiles,
     processLog,
-    processDeck
+    processDeck,
+    fileIsDecklist,
+    fileIsDraftLog
 }
