@@ -66,7 +66,7 @@ function replaceStatements(tableName) {
             VALUES  
                 (${new Array(row.length).fill('?').join(", ")}); 
             `,
-            params: row.map(val => val === '' ? null : val)
+            params: row.map(val => val === '' ? null : val.replace(/\r/g, ''))
         }))
     }
 }
@@ -146,7 +146,7 @@ async function initializeDb(rebuildPicks=false) {
 
 function insertStatement(tableName, dataRow) {
     const keys = Object.keys(dataRow);
-    const args = keys.map((k) => dataRow[k] === '' ? null : dataRow[k]);
+    const args = keys.map((k) => dataRow[k] === '' ? null : dataRow[k].replace(/\r/g, ''));
 
     const query = `REPLACE INTO 
         ${tableName}(${keys.join(', ')})

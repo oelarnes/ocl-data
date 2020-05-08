@@ -78,6 +78,7 @@ const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
 const selectEntry = `SELECT * FROM entry WHERE eventId = $eventId and playerId = $playerId`;
 const selectCube = `SELECT * FROM cube WHERE id = $cubeId`;
+const selectEventByCube = `SELECT * FROM event WHERE cubeId = $cubeId ORDER BY draftDate DESC LIMIT $howMany`;
 const selectPlayersOrderByIdAsc = `SELECT * FROM player WHERE id > $after ORDER BY id ASC LIMIT $howMany`;
 const selectPlayersOrderByIdDesc = `SELECT * FROM player WHERE id < $after ORDER BY id DESC LIMIT $howMany`;
 const selectPlayersOrderByNameAsc = `SELECT * FROM player WHERE fullName > $after ORDER BY fullName ASC LIMIT $howMany`;
@@ -87,6 +88,7 @@ const selectPlayerQps = `SELECT SUM(entry.qpsAwarded) as qps FROM entry JOIN eve
 const selectPlayersByNameOrHandleSearch = `SELECT * FROM player WHERE fullName LIKE '%' || $byName || '%' OR discordHandle LIKE '%' || $byHandle || '%'`;
 const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
 const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
+const selectEventWinner = `SELECT * FROM entry WHERE eventId = $eventId AND finalPosition = 1`;
 const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId`;
 const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany`
@@ -244,10 +246,14 @@ const selectMatchLossesByCard = `SELECT SUM(losses) as losses FROM (
         JOIN cube ON event.cubeId = cube.id
         WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
         AND pick.cardName = $cardName
-    )   
+    )    
 `; 
 const selectCubesForCard = `SELECT * FROM cube
-    WHERE listString LIKE '%' || $cardName || '%'`
+    WHERE listString LIKE '%\n' || $cardName || '\n%'
+    AND activeDate <= $asOf AND inactiveDate > $asOf`
+
+const selectCubesByType = `SELECT * FROM cube
+    WHERE cubeType = $cubeType`
 
 export {
     dropPlayerTable,
@@ -266,6 +272,7 @@ export {
     selectEvent,
     selectEntry,
     selectCube,
+    selectEventByCube,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByIdDesc,
     selectPlayersOrderByNameAsc,
@@ -274,6 +281,7 @@ export {
     selectPlayersByNameOrHandleSearch,
     selectEventsAsc,
     selectEventsDesc,
+    selectEventWinner,
     selectEntriesByEvent,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
@@ -298,5 +306,6 @@ export {
     selectInPoolCountByCard,
     selectMatchWinsByCard,
     selectMatchLossesByCard,
-    selectCubesForCard
+    selectCubesForCard,
+    selectCubesByType
 };

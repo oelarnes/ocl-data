@@ -33,6 +33,7 @@ type OCLEvent {
     draftDate: String
     playerEntries: [Entry]
     pairings(roundNum: Int): [Pairing]
+    winningEntry: Entry
 }
 type Entry {
     playerId: ID!
@@ -135,6 +136,8 @@ type Cube {
     listString: String
     cardNames: [String]
     cards: [Card]
+    recentEvents: [OCLEvent]
+    allCubesOfType: [Cube]
     # ownedMTGOCards: [MTGOCard]
     # ownedDekExport: String
 }

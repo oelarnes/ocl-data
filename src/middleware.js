@@ -7,11 +7,13 @@ import {
     selectEntry,
     selectEvent,
     selectCube,
+    selectEventByCube,
     selectPlayersOrderByIdAsc,
     selectPlayersOrderByNameAsc,
     selectPlayersByNameOrHandleSearch,    
     selectEventsDesc,
     selectEventsAsc,
+    selectEventWinner,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntriesByEvent,
@@ -36,12 +38,11 @@ import {
     selectInPoolCountByCard,
     selectMatchWinsByCard,
     selectMatchLossesByCard,
-    selectCubesForCard
+    selectCubesForCard,
+    selectCubesByType
 } from "./sqlTemplates";
 
 import { makeExecutableSchema } from "graphql-tools";
-import { ALL } from "dns";
-import { match } from "assert";
 
 const MAX_RESULTS = 10000;
 const MAX_DATE = "9999-12-31";
@@ -178,8 +179,11 @@ const resolvers = {
         },
         cube(parent) {
             return executeSelectOne(selectCube, { $cubeId: parent.cubeId });
+        },
+        winningEntry(parent) {
+            return executeSelectOne(selectEventWinner, { $eventId: parent.id });
         }
-    },
+    }, 
     Entry: {
         player(parent) {
             return executeSelectOne(selectPlayer, { $playerId: parent.playerId });
@@ -365,8 +369,8 @@ const resolvers = {
 
             return (wins + priorMatches/2) / (wins + losses + priorMatches);
         },
-        cubesIn(parent) {
-            return executeSelectSome(selectCubesForCard, {$cardName: parent.name});
+        cubesIn(parent, {asOf=new Date().toISOString()}) {
+            return executeSelectSome(selectCubesForCard, {$cardName: parent.name, $asOf: asOf});
         }
 
     },
@@ -376,6 +380,12 @@ const resolvers = {
         },
         cards(parent) {
             return resolvers.Cube.cardNames(parent).map(name => ({ name }));
+        },
+        recentEvents(parent, {howMany = MAX_RESULTS} ) {
+            return executeSelectSome(selectEventByCube, {$cubeId: parent.id, $howMany: howMany})
+        },
+        allCubesOfType(parent) {
+            return executeSelectSome(selectCubesByType, {$cubeType: parent.cubeType});
         }
     }
 };
