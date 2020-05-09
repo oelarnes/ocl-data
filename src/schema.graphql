@@ -1,3 +1,27 @@
+enum CubeType {
+    Classic
+    Powered
+    Interactive
+}
+
+enum PrizeType {
+    QP
+    Ranked
+    Special
+}
+
+enum OCLAccount {
+    OCL_Sower
+    OCL1_Balance
+    OCL2_Opposition
+    OCL3_Duress
+    OCL4_Fireblast
+    OCL5_Rancor
+    OCL6_Vindicate
+    OCL7_Skullclamp
+    OCL8_Wasteland
+}
+
 type Player {
     id: ID!
     fullName: String
@@ -25,11 +49,11 @@ type Standing {
 }
 type OCLEvent {
     id: ID!
-    prizeType: String
+    prizeType: PrizeType
     cubeId: String
     cube: Cube
     season: String
-    completeDate: String
+    completedDate: String
     draftDate: String
     playerEntries: [Entry]
     pairings(roundNum: Int): [Pairing]
@@ -43,9 +67,8 @@ type Entry {
     seatNum: Int!
     finalPosition: Int
     qpsAwarded: Int
-    cpsAwarded: Int
-    account: String
-    accountPw: String
+    cpsAwarded: Int 
+    account: OCLAccount
     isOpen: Boolean
     pairings: [Pairing]
     deck: Deck
@@ -114,15 +137,15 @@ type Deck {
 # }
 type Card {
     name: String!
-    avgPickOrder(cubeTypes: [String]): Float
+    avgPickOrder(cubeTypes: [CubeType]): Float
 #     pickIndex: Float
 #     powerIndex: Float
-    mainDeckPct(cubeTypes: [String]): Float
-    wheelPct(cubeTypes: [String]): Float
-    inEventPoolCount(cubeTypes: [String]): Int 
-    matchWinsInPool(cubeTypes: [String]): Int
-    matchLossesInPool(cubeTypes: [String]): Int
-    bayesianWinRate(cubeTypes: [String], vol: Float): Float
+    mainDeckPct(cubeTypes: [CubeType]): Float
+    wheelPct(cubeTypes: [CubeType]): Float
+    inEventPoolCount(cubeTypes: [CubeType]): Int 
+    matchWinsInPool(cubeTypes: [CubeType]): Int
+    matchLossesInPool(cubeTypes: [CubeType]): Int
+    bayesianWinRate(cubeTypes: [CubeType], vol: Float): Float
     cubesIn: [Cube]    
     recentEntries(howMany: Int): [Entry]
 #     ownedMTGOCard(stylePref: String): MTGOCard
@@ -130,7 +153,7 @@ type Card {
 
 type Cube {
     id: ID!
-    cubeType: String
+    cubeType: CubeType
     activeDate: String
     inactiveDate: String
     listString: String

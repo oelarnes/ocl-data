@@ -294,9 +294,9 @@ const resolvers = {
         otherCards(parent) {
             return resolvers.Pick.otherCardNames(parent).map(name => ({
                 name
-            }));
+            })); 
         }
-    },
+    }, 
     Deck: {
         main(parent) {
             return parent.pool.filter(row => row.isMain);
@@ -363,8 +363,8 @@ const resolvers = {
             return executeSelectOne(selectMatchLossesByCard, args).then(row => row?.losses);
         },
         async bayesianWinRate(parent, {cubeTypes = ALL_CUBE_TYPES, vol=0.03}) {
-            const wins = await resolvers.Card.matchWinsInPool(parent, cubeTypes);
-            const losses = await resolvers.Card.matchLossesInPool(parent, cubeTypes);
+            const wins = await resolvers.Card.matchWinsInPool(parent, {cubeTypes});
+            const losses = await resolvers.Card.matchLossesInPool(parent, {cubeTypes});
             const priorMatches = Math.pow(vol, -2) / 4 - 1;
 
             return (wins + priorMatches/2) / (wins + losses + priorMatches);

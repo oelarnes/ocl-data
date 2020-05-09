@@ -1,5 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { getDataTable } from './googleapi';
+import ini from 'ini';
+import { readFileSync } from 'fs';
 
 import {
     dropEntryTable,
@@ -15,13 +17,11 @@ import {
     createPickTable,
     createCubeTable
 } from './sqlTemplates';
-import { processAllEventFiles } from './draftLogs';
 
 const Database = sqlite3.Database
-const DB_SPEC = process.env.SQLITE3 || ':memory:';
-
+const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'))
 function getDb() {
-    return new Database(DB_SPEC);
+    return new Database(dbConfig.dbSpec[process.env.OCL_ENV || 'test']);
 }
 
 function executeSelectOne(query, args) {
@@ -71,21 +71,22 @@ function replaceStatements(tableName) {
     }
 }
 
-async function initializeDb(rebuildPicks=false) {
-    console.log(`Connecting to sqlite3 database at ${DB_SPEC}`);
+async function initializeDb() {
     const db = getDb();
 
-    await new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => { 
         db.serialize(() => {
             db.run(dropEventTable)
                 .run(dropPlayerTable)
                 .run(dropEntryTable)
                 .run(dropPairingTable)
                 .run(dropCubeTable)
+                .run(dropPickTable)
                 .run(createEventTable)
                 .run(createPlayerTable)
                 .run(createPairingTable)
                 .run(createCubeTable)
+                .run(createPickTable)
                 .run(createEntryTable, [], (err) => {
                     if (err) {
                         reject(err);
@@ -98,9 +99,8 @@ async function initializeDb(rebuildPicks=false) {
         console.log(err);
     });
 
-
     await Promise.all(['player', 'event', 'entry', 'pairing', 'cube'].map((tableName) => {
-        return getDataTable(tableName).then((values) => {
+        return getDataTable(tableName, dbConfig.masterSheet.sheetId).then((values) => {
             return Promise.all(
                 replaceStatements(tableName)(values).map(statement => {
                     return new Promise((resolve, reject) => {
@@ -118,35 +118,34 @@ async function initializeDb(rebuildPicks=false) {
         });
     }));
 
-    if (rebuildPicks) {
-        await new Promise((resolve, reject) => {
-            db.serialize(() => {
-                db.run(dropPickTable)
-                    .run(createPickTable, [], (err) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
+    for (const sheetId of Object.values(dbConfig.eventSheets)) {
+        for (const tableName of ['event', 'entry', 'pairing']) {
+            await getDataTable(tableName, sheetId).then((values) => {
+                return Promise.all(
+                    replaceStatements(tableName)(values).map(statement => {
+                        return new Promise((resolve, reject) => {
+                            db.run(statement.query, statement.params, function (err) {
+                                if (err) {
+                                    reject(err)
+                                }
+                                resolve()
+                            });
+                        }).catch(err => {
+                            console.log(err);
+                        })
                     })
-            })
-        }).catch(err => {
-            console.log(err);
-        });
+                )
+            });
+        }
     }
 
     db.close()
-    
-    if (rebuildPicks) {
-        await processAllEventFiles(); 
-    }
-
     return
 }
 
 function insertStatement(tableName, dataRow) {
     const keys = Object.keys(dataRow);
-    const args = keys.map((k) => dataRow[k] === '' ? null : dataRow[k].replace(/\r/g, ''));
+    const args = keys.map((k) => dataRow[k] === '' ? null : dataRow[k]);
 
     const query = `REPLACE INTO 
         ${tableName}(${keys.join(', ')})

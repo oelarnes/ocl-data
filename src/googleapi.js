@@ -64,11 +64,11 @@ function getNewToken(oAuth2Client, callback) {
  * @see https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
  * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
  */
-function fetchTableAndResolve(resolve, reject, tableName) {
+function fetchTableAndResolve(resolve, reject, tableName, spreadsheetId) {
   return function getDataTable(auth) {
     const sheets = google.sheets({version: 'v4', auth});
     sheets.spreadsheets.values.get({
-      spreadsheetId: '1cStONZtcKyXp62bI78n7Yvay1DqKvb8T_wx_7tds7I0',
+      spreadsheetId,
       range: `${tableName}!A1:M`,
     }, (err, res) => {
       if (err) {
@@ -81,9 +81,9 @@ function fetchTableAndResolve(resolve, reject, tableName) {
   }
 }
 
-export function getDataTable(tableName) {
+export function getDataTable(tableName, spreadsheetId) {
   return new Promise((resolve, reject) => {
-    const dataFetch = fetchTableAndResolve(resolve, reject, tableName)
+    const dataFetch = fetchTableAndResolve(resolve, reject, tableName, spreadsheetId)
     // Load client secrets from a local file.
     fs.readFile('google-auth/credentials.json', (err, content) => {
       if (err) reject(err);

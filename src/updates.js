@@ -7,6 +7,19 @@ const SELECTION_REGEX = /--> (.*)/;
 const CARD_ROW_REGEX = /^1 (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 
+async function dataSyncLoop() {
+    console.log("Updating open events...")
+    await processAllEventFiles();
+    const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() });
+
+    for (const event of openEvents) {
+    }
+    console.log('Updates complete, scheduling next update...');
+
+    setTimeout(dataSyncLoop, 1000 * 60 * 5);
+    return
+}
+
 function fileIsDecklist(filename) {
     const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '');
     const deckLines = fileContents.split('=\n').slice(-1)[0].split('\n').map(r => r.trim())
@@ -25,7 +38,7 @@ async function processAllEventFiles() {
     const allFolders = readdirSync(EVENT_FOLDER).filter(item => allEventIds.includes(item));
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
-        console.log('Event ids missing data folder:')
+        console.log('Event id missing data folder:')
         console.log(item)
         console.log()
     })
@@ -33,33 +46,46 @@ async function processAllEventFiles() {
     for (let eventId of allFolders) {
         await processOneEvent(eventId);
     }
- 
+
     return;
 }
 
 async function processOneEvent(eventId) {
     const eventPath = path.join(EVENT_FOLDER, eventId)
-    const txtFilePaths = readdirSync(eventPath).filter(item => /\.txt$/.test(item)).map(item => path.join(eventPath, item));
+    const txtFileNames = readdirSync(eventPath).filter(item => /\.txt$/.test(item));
 
-    const logFilePaths = txtFilePaths.filter(fileIsDraftLog)
-    const deckFilePaths = txtFilePaths.filter(fileIsDecklist)
+    const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
+        UNION ALL 
+        SELECT decklistSource AS source FROM pick WHERE eventId = $eventId`,
+        { $eventId: eventId }
+    ).then(rows => rows.map(row => row.source));
 
-    const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
-        .then((rows) => rows.map((row) => row.playerId));
+    const logFileNames = txtFileNames.filter(filename => fileIsDraftLog(path.join(eventPath, filename)));
+    const deckFileNames = txtFileNames.filter(filename => fileIsDecklist(path.join(eventPath, filename)));
 
-    for (let filename of logFilePaths) {
-        await loadLogAndWrite(filename, eventId, seatings);
+    let newFiles = logFileNames.concat(deckFileNames).filter(filename => !allSources.includes(filename));
+
+    if (newFiles.length > 0) {
+        console.log(`Found new file ${newFiles[0]} and ${newFiles.length - 1} others in event ${eventId}. Processing now...`)
+
+        await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId });
+        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
+            .then((rows) => rows.map((row) => row.playerId));
+
+        for (let filename of logFileNames) {
+            await loadLogAndWrite(filename, eventId, seatings);
+        }
+
+        for (let filename of deckFileNames) {
+            await loadDeckAndWrite(filename, eventId);
+        }
     }
 
-    for (let filename of deckFilePaths) {
-        await loadDeckAndWrite(filename, eventId);
-    }
     return;
 }
 
 async function loadLogAndWrite(filename, eventId, seatings) {
-    console.log(`Processing log ${filename}`);
-    const processedLog = processLog(readFileSync(filename, 'utf-8'));
+    const processedLog = processLog(readFileSync(path.join(EVENT_FOLDER, eventId, filename), 'utf-8'));
 
     const playerId = seatings[processedLog.seatNum - 1];
     const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId })
@@ -70,7 +96,8 @@ async function loadLogAndWrite(filename, eventId, seatings) {
         return {
             ...logRow,
             playerId,
-            eventId
+            eventId,
+            draftlogSource: filename
         }
     });
 
@@ -78,8 +105,7 @@ async function loadLogAndWrite(filename, eventId, seatings) {
 }
 
 async function loadDeckAndWrite(filename, eventId) {
-    console.log(`Processing decklist ${filename}`);
-    const processedDeck = processDeck(readFileSync(filename, 'utf-8'));
+    const processedDeck = processDeck(readFileSync(path.join(EVENT_FOLDER, eventId, filename), 'utf-8'));
     let playerId;
 
     if (!processedDeck.cardRows) {
@@ -123,14 +149,23 @@ async function loadDeckAndWrite(filename, eventId) {
             }
         );
         if (matchingRow) {
-            await executeRun(`UPDATE pick SET isMain = $isMain WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`, { $isMain: cardRow.isMain, $playerId: playerId, $eventId: eventId, $pickId: matchingRow.pickId });
+            await executeRun(`UPDATE pick SET isMain = $isMain, decklistSource = $decklistSource 
+                WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`, 
+                { 
+                    $isMain: cardRow.isMain, 
+                    $playerId: playerId, 
+                    $eventId: eventId, 
+                    $pickId: matchingRow.pickId,
+                    $decklistSource: filename
+                }
+            );
         } else {
             const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
                 { $playerId: playerId, $eventId: eventId }
             ).then((row) => row.newId) || 1;
             await executeRun(
-                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName)`,
-                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName }
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName, decklistSource) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName, $decklistSource)`,
+                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }
             )
         }
     }
@@ -223,5 +258,6 @@ export {
     processLog,
     processDeck,
     fileIsDecklist,
-    fileIsDraftLog
+    fileIsDraftLog,
+    dataSyncLoop
 }

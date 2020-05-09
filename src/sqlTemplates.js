@@ -14,13 +14,13 @@ CREATE TABLE IF NOT EXISTS player(
     timeZone TEXT,
     pronouns TEXT,
     email TEXT
-);`;
+);`; 
 const createEventTable = `
 CREATE TABLE IF NOT EXISTS event(
     id TEXT PRIMARY KEY,
     prizeType TEXT,
     draftDate TEXT,
-    completeDate TEXT, 
+    completedDate TEXT, 
     cubeId TEXT, 
     season TEXT
 );`;
@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS entry(
     eventId TEXT,
     seatNum INTEGER,
     account TEXT, 
-    accountPw TEXT, 
     isOpen BOOLEAN,
     finalPosition INTEGER,
     qpsAwarded INTEGER,
@@ -63,6 +62,8 @@ CREATE TABLE IF NOT EXISTS pick(
     cardName TEXT, 
     otherCardNamesString TEXT,
     isMain INT,
+    decklistSource TEXT,
+    draftlogSource TEXT,
     PRIMARY KEY(playerId, eventId, pickId)
 );`;
 const createCubeTable = `
@@ -89,7 +90,7 @@ const selectPlayersByNameOrHandleSearch = `SELECT * FROM player WHERE fullName L
 const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
 const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
 const selectEventWinner = `SELECT * FROM entry WHERE eventId = $eventId AND finalPosition = 1`;
-const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId`;
+const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId ORDER BY seatNum DESC`;
 const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany`
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
@@ -199,12 +200,12 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
-const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 100.0)/COUNT(pick.isMain) AS isMainPct FROM pick
+const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`;
-const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 100.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
+const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 1.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
