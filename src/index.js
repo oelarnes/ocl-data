@@ -8,12 +8,10 @@ import { dataSyncLoop } from './updates';
 if (require.main === module) {
     const app = express();
         
-    // initializeDb().then(() => {
-    //     console.log('SQL Database initialized'); 
-    // }).then(dataSyncLoop);
+    initializeDb().then(() => {
+        console.log('SQL Database initialized'); 
+    }).then(dataSyncLoop);
  
-    dataSyncLoop();
-
     app.use('/data', middleware);
 
     const server = http.createServer(app); 
