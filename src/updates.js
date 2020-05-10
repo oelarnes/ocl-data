@@ -10,6 +10,7 @@ const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 async function dataSyncLoop() {
     const loopCadence = 1000 * 60 * 5;
     console.log("%s Updating open events...", new Date().toISOString())
+
     await processAllEventFiles();
     const dbConfig = getDbConfig()
     
@@ -25,13 +26,11 @@ async function dataSyncLoop() {
         console.log('Updating data for open event %s', event)
         updateEventData(sheetId)
     }
-    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + loopCadence));
 
+    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + loopCadence));
     setTimeout(dataSyncLoop, loopCadence);
     return
 }
-
-
 
 function fileIsDecklist(filename) {
     const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '');
@@ -47,7 +46,7 @@ function fileIsDraftLog(filename) {
 }
 
 async function processAllEventFiles() {
-    const allEventIds = await executeSelectSome('SELECT id FROM event;', {}).then(rows => rows.map(row => row.id));
+    const allEventIds = await executeSelectSome('SELECT id FROM event;', {}, 'id');
     const allFolders = readdirSync(EVENT_FOLDER).filter(item => allEventIds.includes(item));
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
@@ -56,7 +55,7 @@ async function processAllEventFiles() {
         console.log()
     })
 
-    for (let eventId of allFolders) {
+    for (const eventId of allFolders) {
         await processOneEvent(eventId);
     }
 
@@ -77,7 +76,7 @@ async function processOneEvent(eventId) {
     const logFileNames = txtFileNames.filter(filename => fileIsDraftLog(path.join(eventPath, filename)));
     const deckFileNames = txtFileNames.filter(filename => fileIsDecklist(path.join(eventPath, filename)));
 
-    let newFiles = logFileNames.concat(deckFileNames).filter(filename => !allSources.includes(filename));
+    const newFiles = logFileNames.concat(deckFileNames).filter(filename => !allSources.includes(filename));
 
     if (newFiles.length > 0) {
         console.log(`Found new file ${newFiles[0]} and ${newFiles.length - 1} others in event ${eventId}. Processing now...`)
@@ -173,8 +172,7 @@ async function loadDeckAndWrite(filename, eventId) {
             );
         } else {
             const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
-                { $playerId: playerId, $eventId: eventId }
-            ).then((row) => row.newId) || 1;
+                { $playerId: playerId, $eventId: eventId }, 'newId') || 1;
             await executeRun(
                 `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName, decklistSource) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName, $decklistSource)`,
                 { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }

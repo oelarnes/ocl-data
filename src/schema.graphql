@@ -113,7 +113,7 @@ type Pick {
     otherCardNamesString: String
     otherCardNames: [String]
     otherCards: [Card]
-    isMain: Int
+    numMain: Int
     poolAsOfNames: [String]
     poolAsOf: [Card]
 }
@@ -124,9 +124,9 @@ type Deck {
     # ownedDekFile(stylePref: String): String
 }
 # type MTGOCard {
+#     id: Int!
 #     name: String
 #     mtgoName: String    
-#     mtgoId: Int!
 #     numOwned: Int
 #     numWishlist: Int
 #     styleClass: String

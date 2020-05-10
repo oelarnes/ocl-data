@@ -281,8 +281,9 @@ const resolvers = {
                     $eventId: parent.eventId,
                     $packNum: parent.packNum,
                     $pickNum: parent.pickNum
-                }
-            ).then(rows => rows.map((row) => row.cardName));
+                },
+                'cardName'
+            );
         },
         card(parent) {
             return {
@@ -302,10 +303,10 @@ const resolvers = {
     }, 
     Deck: {
         main(parent) {
-            return parent.pool.filter(row => row.isMain);
+            return parent.pool.filter(row => row.numMain);
         },
         sideboard(parent) {
-            return parent.pool.filter(row => !row.isMain);
+            return parent.pool.filter(row => !row.numMain);
         }
     },
     Card: {
@@ -315,18 +316,14 @@ const resolvers = {
                 $cardName: parent.name
             };
 
-            return executeSelectOne(selectPickOrderByCard, args).then(row => {
-                return row?.avgPickOrder
-            });
+            return executeSelectOne(selectPickOrderByCard, args, 'avgPickOrder');
         },
         mainDeckPct(parent, { cubeTypes = ALL_CUBE_TYPES}) {
             const args = {
                 ...cubeTypeArgs(cubeTypes),
                 $cardName: parent.name
             };
-            return executeSelectOne(selectIsMainPctByCard, args).then(row => {
-                return row?.isMainPct
-            });
+            return executeSelectOne(selectIsMainPctByCard, args, 'isMainPct');
         },
         recentEntries(parent, {howMany = MAX_RESULTS}) {
             return executeSelectSome(selectEntriesByCardName, { 
@@ -339,7 +336,7 @@ const resolvers = {
                 $cardName: parent.name
             };
 
-            return executeSelectOne(selectWheelPctByCard, args).then(row => row?.wheelPct);
+            return executeSelectOne(selectWheelPctByCard, args, 'wheelPct');
         },
         inEventPoolCount(parent, {cubeTypes = ALL_CUBE_TYPES}) {
             const args = {
@@ -347,7 +344,7 @@ const resolvers = {
                 $cardName: parent.name
             };
 
-            return executeSelectOne(selectInPoolCountByCard, args).then(row => row?.inPoolCount);
+            return executeSelectOne(selectInPoolCountByCard, args, 'inPoolCount');
         },
         matchWinsInPool(parent, {cubeTypes = ALL_CUBE_TYPES}) {
             const args = {
@@ -355,7 +352,7 @@ const resolvers = {
                 $cardName: parent.name
             };
 
-            return executeSelectOne(selectMatchWinsByCard, args).then(row => row?.wins);
+            return executeSelectOne(selectMatchWinsByCard, args, 'wins');
         },
         matchLossesInPool(parent, {cubeTypes = ALL_CUBE_TYPES}) {
             const args = {
@@ -363,7 +360,7 @@ const resolvers = {
                 $cardName: parent.name
             };
 
-            return executeSelectOne(selectMatchLossesByCard, args).then(row => row?.losses);
+            return executeSelectOne(selectMatchLossesByCard, args, 'losses');
         },
         async bayesianWinRate(parent, {cubeTypes = ALL_CUBE_TYPES, vol=0.03}) {
             const wins = await resolvers.Card.matchWinsInPool(parent, {cubeTypes});

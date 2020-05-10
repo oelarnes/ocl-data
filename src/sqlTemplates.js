@@ -4,6 +4,7 @@ const dropEntryTable = 'DROP TABLE IF EXISTS entry;';
 const dropPairingTable = 'DROP TABLE IF EXISTS pairing;';
 const dropPickTable = 'DROP TABLE IF EXISTS pick;';
 const dropCubeTable = `DROP TABLE IF EXISTS cube;`;
+const dropMTGOCardTable = `DROP TABLE if EXISTS mtgoCard;`;
 // Create Table
 const createPlayerTable = `
 CREATE TABLE IF NOT EXISTS player(
@@ -61,7 +62,7 @@ CREATE TABLE IF NOT EXISTS pick(
     pickNum INT,
     cardName TEXT, 
     otherCardNamesString TEXT,
-    isMain INT,
+    numMain INT,
     decklistSource TEXT,
     draftlogSource TEXT,
     PRIMARY KEY(playerId, eventId, pickId)
@@ -74,6 +75,17 @@ CREATE TABLE IF NOT EXISTS cube(
     inactiveDate TEXT,
     listString TEXT
 );`;
+const createMTGOCardTable = `
+CREATE TABLE IF NOT EXISTS mtgoCard(
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    mtgoName TEXT,
+    numOwned INTEGER,
+    numWishlist: INTEGER,
+    atAccounts: TEXT,
+    isFoil: BOOLEAN,
+    imageLocator: TEXT
+)`
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
@@ -200,11 +212,11 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
-const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
+const selectisMainPctByCard = `SELECT SUM(pick.numMain * 1.0)/COUNT(pick.numMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
-    AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`;
+    AND pick.numMain IS NOT NULL AND pick.cardName = $cardName`;
 const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 1.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
@@ -302,7 +314,7 @@ export {
     selectStandingForPlayerBySeason,
     selectPicksForEntry,
     selectPickOrderByCard,
-    selectIsMainPctByCard,
+    selectisMainPctByCard,
     selectWheelPctByCard,
     selectInPoolCountByCard,
     selectMatchWinsByCard,
