@@ -119,6 +119,9 @@ const resolvers = {
         },
         card(_parent, { name }) {
             return { name }
+        },
+        cubeByType(parent, { cubeType }) {
+            return executeSelectOne(selectCubesByType, { $cubeType: cubeType })
         }
     },
     Player: {

@@ -174,4 +174,5 @@ type Query {
     entry(playerId: ID!, eventId: ID!): Entry
     standings(season: String, howMany: Int, after: Int): [Standing]
     card(name: String): Card
+    cubeByType(cubeType: CubeType): Cube
 } 

@@ -8,19 +8,18 @@ import { dataSyncLoop } from './updates';
 if (require.main === module) {
     const app = express();
         
-    initializeDb().then(() => {
-        console.log('SQL Database initialized'); 
-    }).then(dataSyncLoop);
+    // initializeDb().then(() => {
+    //     console.log('SQL Database initialized'); 
+    // }).then(dataSyncLoop);
  
- //   dataSyncLoop();
+    dataSyncLoop();
 
     app.use('/data', middleware);
 
     const server = http.createServer(app); 
 
-    server.listen(4002); 
+    server.listen(4000); 
     console.log('GraphQL server started on port %s', (server.address()).port); 
 } 
 
 export {middleware}
- 

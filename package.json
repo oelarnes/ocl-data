@@ -6,7 +6,8 @@
   "scripts": {
     "build": "babel --watch src --out-dir lib",
     "test": "SQLITE3=./data/ocl-data-test.db jest",
-    "install": "./local-env.sh"
+    "install": "./local-env.sh",
+    "start": "node ./lib/index.js"
   },
   "repository": {
     "type": "git",

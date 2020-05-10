@@ -254,7 +254,7 @@ const selectCubesForCard = `SELECT * FROM cube
     AND activeDate <= $asOf AND inactiveDate > $asOf`
 
 const selectCubesByType = `SELECT * FROM cube
-    WHERE cubeType = $cubeType`
+    WHERE cubeType = $cubeType ORDER BY activeDate DESC`
 
 export {
     dropPlayerTable,

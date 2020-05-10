@@ -3,7 +3,7 @@ const readline = require('readline');
 const {google} = require('googleapis');
 
 // If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -92,3 +92,68 @@ export function getDataTable(tableName, spreadsheetId) {
     });
   })
 } 
+
+export async function writePairingCompletedDate(spreadsheetId, values) {  
+  function writeFn(auth) {  
+    const sheets = google.sheets({version: 'v4', auth});
+    return sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `pairing!K2:K13`,
+      valueInputOption: "RAW",
+      resource: {
+        values
+      }
+    });
+  }
+  return new Promise((resolve, reject) => {
+    fs.readFile('google-auth/credentials.json', (err, content) => {
+      if (err) reject(err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), resolve);
+    });
+  }).then(writeFn)
+}
+
+
+export async function writeEventCompletedDate(spreadsheetId) {  
+  function writeFn(auth) {  
+    const sheets = google.sheets({version: 'v4', auth});
+    return sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `event!D2:D2`,
+      valueInputOption: "RAW",
+      resource: {
+        values: [[new Date().toISOString()]]
+      },
+      
+    }, );
+  }
+  return new Promise((resolve, reject) => {
+    fs.readFile('google-auth/credentials.json', (err, content) => {
+      if (err) reject(err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), resolve);
+    });
+  }).then(writeFn);
+}
+
+export async function closeEntries(spreadsheetId) {  
+  function writeFn(auth) {  
+    const sheets = google.sheets({version: 'v4', auth});
+    return sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `entry!E2:E9`,
+      valueInputOption: "RAW",
+      resource: {
+        values: new Array(8).fill([0])
+      },
+    }, );
+  }
+  return new Promise((resolve, reject) => {
+    fs.readFile('google-auth/credentials.json', (err, content) => {
+      if (err) reject(err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), resolve);
+    });
+  }).then(writeFn);
+}

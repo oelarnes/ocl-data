@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'fs';
-import { executeInsertData, executeSelectSome, executeSelectOne, executeRun } from './db';
+import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getDbConfig, updateEventData } from './db';
 import path from 'path';
 
 const EVENT_FOLDER = './data/events';
@@ -8,17 +8,30 @@ const CARD_ROW_REGEX = /^1 (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 
 async function dataSyncLoop() {
-    console.log("Updating open events...")
+    const loopCadence = 1000 * 60 * 5;
+    console.log("%s Updating open events...", new Date().toISOString())
     await processAllEventFiles();
-    const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() });
+    const dbConfig = getDbConfig()
+    
+    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id');
+    const newEvents = Object.keys(dbConfig.eventSheets).filter(eventId => !knownEventIds.includes(eventId));
+    const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() }, 'id');
 
-    for (const event of openEvents) {
+    for (const event of openEvents.concat(newEvents)) {
+        const sheetId = dbConfig.eventSheets[event]
+        if (sheetId === undefined) {
+            throw `No event sheet for open event ${event}`
+        }
+        console.log('Updating data for open event %s', event)
+        updateEventData(sheetId)
     }
-    console.log('Updates complete, scheduling next update...');
+    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + loopCadence));
 
-    setTimeout(dataSyncLoop, 1000 * 60 * 5);
+    setTimeout(dataSyncLoop, loopCadence);
     return
 }
+
+
 
 function fileIsDecklist(filename) {
     const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '');
@@ -57,8 +70,9 @@ async function processOneEvent(eventId) {
     const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
         UNION ALL 
         SELECT decklistSource AS source FROM pick WHERE eventId = $eventId`,
-        { $eventId: eventId }
-    ).then(rows => rows.map(row => row.source));
+        { $eventId: eventId },
+        'source'
+    );
 
     const logFileNames = txtFileNames.filter(filename => fileIsDraftLog(path.join(eventPath, filename)));
     const deckFileNames = txtFileNames.filter(filename => fileIsDecklist(path.join(eventPath, filename)));
@@ -69,8 +83,7 @@ async function processOneEvent(eventId) {
         console.log(`Found new file ${newFiles[0]} and ${newFiles.length - 1} others in event ${eventId}. Processing now...`)
 
         await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId });
-        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId })
-            .then((rows) => rows.map((row) => row.playerId));
+        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId');
 
         for (let filename of logFileNames) {
             await loadLogAndWrite(filename, eventId, seatings);
@@ -88,8 +101,7 @@ async function loadLogAndWrite(filename, eventId, seatings) {
     const processedLog = processLog(readFileSync(path.join(EVENT_FOLDER, eventId, filename), 'utf-8'));
 
     const playerId = seatings[processedLog.seatNum - 1];
-    const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId })
-        .then(row => row.fullName);
+    const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName');
     console.log(`Inferred identity of ${processedLog.playerTag} as ${fullName} in event ${eventId}`);
 
     const uploadTable = processedLog.logRows.map((logRow) => {

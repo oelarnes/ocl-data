@@ -1,5 +1,5 @@
 import sqlite3 from 'sqlite3';
-import { getDataTable } from './googleapi';
+import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, closeEntries } from './googleapi';
 import ini from 'ini';
 import { readFileSync } from 'fs';
 
@@ -19,12 +19,15 @@ import {
 } from './sqlTemplates';
 
 const Database = sqlite3.Database
-const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'))
 function getDb() {
-    return new Database(dbConfig.dbSpec[process.env.OCL_ENV || 'test']);
+    return new Database(getDbConfig().dbSpec[process.env.OCL_ENV || 'test']);
 }
 
-function executeSelectOne(query, args) {
+function getDbConfig() {
+    return ini.parse(readFileSync('./data/env.ini', 'utf-8'));
+}
+
+function executeSelectOne(query, args, extractProp) {
     const db = getDb();
 
     return new Promise((resolve, reject) => {
@@ -37,10 +40,16 @@ function executeSelectOne(query, args) {
         db.close();
     }).catch((err) => {
         console.log(err);
+    }).then(row => {
+        if (extractProp !== undefined) {
+            return row?.[extractProp]
+        } else {
+            return row
+        }
     });
 }
 
-function executeSelectSome(query, args) {
+function executeSelectSome(query, args, extractProp) {
     const db = getDb();
     return new Promise((resolve, reject) => {
 
@@ -53,6 +62,12 @@ function executeSelectSome(query, args) {
         db.close();
     }).catch((err) => {
         console.log(err);
+    }).then(rows => {
+        if (extractProp !== undefined) {
+            return rows.map(row => row[extractProp]);
+        } else {
+            return rows
+        }
     });
 }
 
@@ -73,8 +88,9 @@ function replaceStatements(tableName) {
 
 async function initializeDb() {
     const db = getDb();
+    const dbConfig = getDbConfig();
 
-    await new Promise((resolve, reject) => { 
+    await new Promise((resolve, reject) => {
         db.serialize(() => {
             db.run(dropEventTable)
                 .run(dropPlayerTable)
@@ -118,29 +134,57 @@ async function initializeDb() {
         });
     }));
 
-    for (const sheetId of Object.values(dbConfig.eventSheets)) {
-        for (const tableName of ['event', 'entry', 'pairing']) {
-            await getDataTable(tableName, sheetId).then((values) => {
-                return Promise.all(
-                    replaceStatements(tableName)(values).map(statement => {
-                        return new Promise((resolve, reject) => {
-                            db.run(statement.query, statement.params, function (err) {
-                                if (err) {
-                                    reject(err)
-                                }
-                                resolve()
-                            });
-                        }).catch(err => {
-                            console.log(err);
-                        })
-                    })
-                )
-            });
-        }
+    db.close()
+
+    const eventSheets = dbConfig.eventSheets;
+
+    for (const sheetId of Object.values(eventSheets)) {
+        await updateEventData(sheetId);
     }
 
-    db.close()
     return
+}
+
+async function updateEventData(sheetId) {
+    const db = getDb();
+    let eventId;
+    for (const tableName of ['event', 'entry', 'pairing']) {
+        await getDataTable(tableName, sheetId).then((values) => {
+            if (tableName === 'event') {
+                eventId = values[1][0].trim();
+            }
+            return Promise.all(
+                replaceStatements(tableName)(values).map(statement => {
+                    return new Promise((resolve, reject) => {
+                        db.run(statement.query, statement.params, function (err) {
+                            if (err) {
+                                reject(err)
+                            }
+                            resolve()
+                        });
+                    }).catch(err => {
+                        console.log(err);
+                    })
+                })
+            )
+        });
+    }
+    db.close();
+
+    const todayString = new Date().toISOString();
+    // check pairings
+    const newCompletedDates = await executeSelectSome(`SELECT * FROM pairing WHERE eventId = $eventId`, { $eventId: eventId }).then(rows => rows.map((row) =>
+        ((row.p1MatchWin || row.p2MatchWin) && row.completedDate > todayString) ? [todayString] : [row.completedDate]
+    ));
+
+    await writePairingCompletedDate(sheetId, newCompletedDates);
+
+    if (!newCompletedDates.filter(date => date > todayString).length) {
+        writeEventCompletedDate(sheetId);
+        closeEntries(sheetId);
+    }
+
+    return;
 }
 
 function insertStatement(tableName, dataRow) {
@@ -199,9 +243,11 @@ function executeRun(statement, args) {
 
 export {
     getDb,
+    getDbConfig,
     executeSelectOne,
     executeSelectSome,
     executeInsertData,
     executeRun,
-    initializeDb
+    initializeDb,
+    updateEventData
 }
