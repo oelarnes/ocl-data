@@ -19,8 +19,10 @@ import {
 } from './sqlTemplates';
 
 const Database = sqlite3.Database
+
+const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'));
 function getDb() {
-    return new Database(getDbConfig().dbSpec[process.env.OCL_ENV || 'test']);
+    return new Database(dbConfig.dbSpec[process.env.OCL_ENV || 'test']);
 }
 
 function getDbConfig() {
@@ -179,7 +181,9 @@ async function updateEventData(sheetId) {
 
     await writePairingCompletedDate(sheetId, newCompletedDates);
 
-    if (!newCompletedDates.filter(date => date > todayString).length) {
+    const eventCompletedDate = await executeSelectOne(`SELECT completedDate FROM event WHERE id = $eventId`, {$eventId: eventId}, 'completedDate');
+
+    if (eventCompletedDate > todayString && !newCompletedDates.filter(date => date > todayString).length) {
         writeEventCompletedDate(sheetId);
         closeEntries(sheetId);
     }

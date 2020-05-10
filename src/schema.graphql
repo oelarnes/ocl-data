@@ -55,7 +55,7 @@ type OCLEvent {
     season: String
     completedDate: String
     draftDate: String
-    playerEntries: [Entry]
+    playerEntries(byFinish: Boolean): [Entry]
     pairings(roundNum: Int): [Pairing]
     winningEntry: Entry
 }
@@ -123,18 +123,18 @@ type Deck {
     sideboard: [Pick]
     # ownedDekFile(stylePref: String): String
 }
-# type MTGOCard {
-#     id: Int!
-#     name: String
-#     mtgoName: String    
-#     numOwned: Int
-#     numWishlist: Int
-#     styleClass: String
-#     isFoil: Boolean
-#     dekRow(howMany: Int, isSideboard: Boolean): String
-#     numAtAccount(oclAccount: String): Int
-#     card: Card
-# }
+type MTGOCard {
+    id: Int!
+    name: String
+    mtgoName: String    
+    numOwned: Int
+    numWishlist: Int
+#    styleClass: String
+#    isFoil: Boolean
+    dekRow(howMany: Int, isSideboard: Boolean): String
+#    numAtAccount(oclAccount: String): Int
+    card: Card
+}
 type Card {
     name: String!
     avgPickOrder(cubeTypes: [CubeType]): Float

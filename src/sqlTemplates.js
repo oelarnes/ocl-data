@@ -102,7 +102,8 @@ const selectPlayersByNameOrHandleSearch = `SELECT * FROM player WHERE fullName L
 const selectEventsAsc = `SELECT * FROM event WHERE draftDate > $after ORDER BY draftDate ASC LIMIT $howMany`;
 const selectEventsDesc = `SELECT * FROM event WHERE draftDate < $after ORDER BY draftDate DESC LIMIT $howMany`;
 const selectEventWinner = `SELECT * FROM entry WHERE eventId = $eventId AND finalPosition = 1`;
-const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId ORDER BY seatNum DESC`;
+const selectEntriesByEvent = `SELECT * FROM entry WHERE entry.eventId = $eventId ORDER BY seatNum ASC`;
+const selectEntriesByEventByPosition = `SELECT * FROM entry WHERE entry.eventId = $eventId ORDER BY finalPosition ASC, seatNum ASC`;
 const selectEntriesByPlayerAsc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
     WHERE event.draftDate > $after AND entry.playerId = $playerId ORDER BY event.draftDate ASC LIMIT $howMany`
 const selectEntriesByPlayerDesc = `SELECT entry.* FROM entry JOIN event ON entry.eventId = event.id
@@ -296,6 +297,7 @@ export {
     selectEventsDesc,
     selectEventWinner,
     selectEntriesByEvent,
+    selectEntriesByEventByPosition,
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntryWins,

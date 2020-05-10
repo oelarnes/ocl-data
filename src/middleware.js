@@ -17,6 +17,7 @@ import {
     selectEntriesByPlayerAsc,
     selectEntriesByPlayerDesc,
     selectEntriesByEvent,
+    selectEntriesByEventByPosition,
     selectEntryWins,
     selectEntriesByCardName,
     selectOpenEntriesByPlayer,
@@ -26,7 +27,7 @@ import {
     selectPairingsByEventAndRound,
     selectPairingsByEntry,
     selectOpenPairingsByPlayer,
-    selectStandingsAllTime,
+    selectStandingsAllTime, 
     selectStandingsBySeason,
     selectStandingForPlayerAllTime,
     selectStandingForPlayerBySeason,
@@ -96,7 +97,7 @@ const resolvers = {
         },
         events(
             _parent,
-            { after, howMany = MAX_RESULTS, asc = true }
+            { after, howMany = MAX_RESULTS, asc = false }
         ) {
             const query = asc ? selectEventsAsc : selectEventsDesc;
 
@@ -169,7 +170,10 @@ const resolvers = {
         }
     },
     OCLEvent: {
-        playerEntries(parent) {
+        playerEntries(parent, {byFinish=false}) {
+            if (byFinish) {
+                return executeSelectSome(selectEntriesByEventByPosition, { $eventId: parent.id})
+            }
             return executeSelectSome(selectEntriesByEvent, { $eventId: parent.id });
         },
         pairings(parent, { roundNum }) {
