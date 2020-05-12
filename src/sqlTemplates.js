@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS pick(
     pickNum INT,
     cardName TEXT, 
     otherCardNamesString TEXT,
-    numMain INT,
+    isMain INT,
     decklistSource TEXT,
     draftlogSource TEXT,
     PRIMARY KEY(playerId, eventId, pickId)
@@ -213,11 +213,11 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
-const selectisMainPctByCard = `SELECT SUM(pick.numMain * 1.0)/COUNT(pick.numMain) AS isMainPct FROM pick
+const selectisMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
-    AND pick.numMain IS NOT NULL AND pick.cardName = $cardName`;
+    AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`;
 const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 1.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id

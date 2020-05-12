@@ -113,7 +113,7 @@ type Pick {
     otherCardNamesString: String
     otherCardNames: [String]
     otherCards: [Card]
-    numMain: Int
+    isMain: Int
     poolAsOfNames: [String]
     poolAsOf: [Card]
 }

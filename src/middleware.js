@@ -128,7 +128,7 @@ const resolvers = {
     Player: {
         eventEntries(
             parent,
-            { after, howMany = MAX_RESULTS, asc = true }
+            { after, howMany = MAX_RESULTS, asc = false }
         ) {
             const query = asc ? selectEntriesByPlayerAsc : selectEntriesByPlayerDesc;
 
@@ -307,10 +307,10 @@ const resolvers = {
     }, 
     Deck: {
         main(parent) {
-            return parent.pool.filter(row => row.numMain);
-        },
+            return parent.pool.filter(row => row.isMain);
+        }, 
         sideboard(parent) {
-            return parent.pool.filter(row => !row.numMain);
+            return parent.pool.filter(row => !row.isMain);
         }
     },
     Card: {

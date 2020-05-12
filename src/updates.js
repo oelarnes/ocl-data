@@ -1,11 +1,19 @@
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, mkdir } from 'fs';
 import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getDbConfig, updateEventData } from './db';
 import path from 'path';
 
 const EVENT_FOLDER = './data/events';
 const SELECTION_REGEX = /--> (.*)/;
-const CARD_ROW_REGEX = /^1 (.*)/;
+const CARD_ROW_REGEX = /^[0-9]* (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
+
+
+async function importDekFiles() {
+    const dbConfig = getDbConfig()
+
+    
+}
+
 
 async function dataSyncLoop() {
     const loopCadence = 1000 * 60 * 5;
@@ -50,9 +58,8 @@ async function processAllEventFiles() {
     const allFolders = readdirSync(EVENT_FOLDER).filter(item => allEventIds.includes(item));
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
-        console.log('Event id missing data folder:')
-        console.log(item)
-        console.log()
+        console.log('Creating event folder for %s', item)
+        mkdir('./data/events/%s', item)
     })
 
     for (const eventId of allFolders) {
@@ -152,7 +159,7 @@ async function loadDeckAndWrite(filename, eventId) {
     for (let cardRow of processedDeck.cardRows) {
         // select the first row of this entry with matching cardname and no main/sb info
         const matchingRow = await executeSelectOne(
-            `SELECT * FROM pick WHERE eventId = $eventId AND playerId = $playerId AND cardName = $cardName AND numMain IS NULL`,
+            `SELECT * FROM pick WHERE eventId = $eventId AND playerId = $playerId AND cardName = $cardName AND isMain IS NULL`,
             {
                 $playerId: playerId,
                 $eventId: eventId,
@@ -160,10 +167,10 @@ async function loadDeckAndWrite(filename, eventId) {
             }
         );
         if (matchingRow) {
-            await executeRun(`UPDATE pick SET numMain = $numMain, decklistSource = $decklistSource 
-                WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND numMain IS NULL`, 
+            await executeRun(`UPDATE pick SET isMain = $isMain, decklistSource = $decklistSource 
+                WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`, 
                 { 
-                    $numMain: cardRow.numMain, 
+                    $isMain: cardRow.isMain, 
                     $playerId: playerId, 
                     $eventId: eventId, 
                     $pickId: matchingRow.pickId,
@@ -174,8 +181,8 @@ async function loadDeckAndWrite(filename, eventId) {
             const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
                 { $playerId: playerId, $eventId: eventId }, 'newId') || 1;
             await executeRun(
-                `INSERT INTO pick(playerId, eventId, pickId, numMain, cardName, decklistSource) VALUES ($playerId, $eventId, $pickId, $numMain, $cardName, $decklistSource)`,
-                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $numMain: cardRow.numMain, $cardName: cardRow.cardName, $decklistSource: filename }
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName, decklistSource) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName, $decklistSource)`,
+                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }
             )
         }
     }
@@ -248,14 +255,14 @@ function processDeck(decklist) {
             const mtgoName = line.match(CARD_ROW_REGEX)?.[1]?.trim();
             return {
                 cardName: nameMap[mtgoName] || mtgoName,
-                numMain: 1
+                isMain: 1
             }
         }).concat(
             lines.slice(sbBreakIndex + 1).map(line => {
                 const mtgoName = line.match(CARD_ROW_REGEX)?.[1]?.trim();
                 return {
                     cardName: nameMap[mtgoName] || mtgoName,
-                    numMain: 0
+                    isMain: 0
                 }
             })
         ).filter((row) => row.cardName !== undefined),
