@@ -19,24 +19,31 @@ async function importDekFiles() {
             {
                 mtgoId: card.$.CatId,
                 numOwned: card.$.Quantity,
-                numWishlist: 0
+                numWishlist: 0,
+                mtgoName: card.$.Name
             }
         )))
         const wishlistCardRows = await parseStringPromise(readFileSync(dekSources.wishlist)).then(result => result.Deck.Cards.map(card => (
             {
                 mtgoId: card.$.CatId,
                 numOwned: 0,
-                numWishlist: card.$.Quantity
+                numWishlist: card.$.Quantity,
+                mtgoName: card.$.Name
             }
         )))
-        const insertRows = await extendMtgoRows(ownedCardRows.concat(wishlistCardRows))
+
+        const rowMap = ownedCardRows.concat(wishlistCardRows).reduce((prev, curr) => {
+            prev[curr.mtgoName] = curr;
+            return prev;
+        }, {})
+
+        const insertRows = await extendMtgoRows(rowMap)
         await executeInsertData('mtgoCard', insertRows)
     }
     return
-
 }
 
-function extendMtgoRows(rows) {
+function extendMtgoRows(rowMap) {
     return new Promise((resolve, reject) => {
         const url = 'mongodb://localhost:27017';
 
@@ -47,12 +54,22 @@ function extendMtgoRows(rows) {
 
             const collection = client.db('scryfall').collection('cards_en');
 
-            collection.find({mtgoId: {$in: rows.map(row => parseInt(row.mtgoId, 10))}})
+            collection.find({mtgoId: {$in: Object.keys(rowMap)}}).toArray((err, items) => {
+                if (err) {
+                    reject(err)
+                }
+                resolve(items);
+            })
 
             client.close();
         });
-    })
-
+    }).then(rows => rows.map(row => {
+        const oldRow = rowMap[row]
+        return {
+            ...oldRow,
+            name: row.name
+        }
+    }))
 }
 
 async function dataSyncLoop() {
@@ -60,6 +77,7 @@ async function dataSyncLoop() {
     console.log("%s Updating open events...", new Date().toISOString())
 
     await processAllEventFiles()
+    await importDekFiles()
     const dbConfig = getDbConfig()
 
     const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
