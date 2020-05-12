@@ -213,7 +213,7 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
-const selectisMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
+const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
@@ -316,7 +316,7 @@ export {
     selectStandingForPlayerBySeason,
     selectPicksForEntry,
     selectPickOrderByCard,
-    selectisMainPctByCard,
+    selectIsMainPctByCard,
     selectWheelPctByCard,
     selectInPoolCountByCard,
     selectMatchWinsByCard,

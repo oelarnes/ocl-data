@@ -8,13 +8,6 @@ const CARD_ROW_REGEX = /^[0-9]* (.*)/;
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
 
 
-async function importDekFiles() {
-    const dbConfig = getDbConfig()
-
-    
-}
-
-
 async function dataSyncLoop() {
     const loopCadence = 1000 * 60 * 5;
     console.log("%s Updating open events...", new Date().toISOString())
@@ -185,7 +178,9 @@ async function loadDeckAndWrite(filename, eventId) {
                 { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }
             )
         }
+        
     }
+    return
 }
 
 function processLog(draftLog) {

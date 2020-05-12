@@ -151,27 +151,27 @@ async function updateEventData(sheetId) {
     const db = getDb();
     let eventId;
     for (const tableName of ['event', 'entry', 'pairing']) {
-        await getDataTable(tableName, sheetId).then((values) => {
+        await getDataTable(tableName, sheetId).then(async (values) => {
             if (tableName === 'event') {
                 eventId = values[1][0].trim();
             }
-            return Promise.all(
-                replaceStatements(tableName)(values).map(statement => {
-                    return new Promise((resolve, reject) => {
-                        db.run(statement.query, statement.params, function (err) {
-                            if (err) {
-                                reject(err)
-                            }
-                            resolve()
-                        });
-                    }).catch(err => {
-                        console.log(err);
-                    })
-                })
-            )
+            const statements = replaceStatements(tableName)(values)
+            for (const statement of statements) {
+                await new Promise((resolve, reject) => {
+                    db.run(statement.query, statement.params, function (err) {
+                        if (err) {
+                            reject(err)
+                        }
+                        resolve()
+                    });
+                }).catch(err => {
+                    console.log(err);
+                })   
+            }
         });
     }
     db.close();
+    
 
     const todayString = new Date().toISOString();
     // check pairings
