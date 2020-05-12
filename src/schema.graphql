@@ -130,7 +130,7 @@ type MTGOCard {
     numOwned: Int
     numWishlist: Int
 #    styleClass: String
-#    isFoil: Boolean
+    isFoil: Boolean
     dekRow(howMany: Int, isSideboard: Boolean): String
 #    numAtAccount(oclAccount: String): Int
     card: Card

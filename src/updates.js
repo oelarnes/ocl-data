@@ -1,23 +1,70 @@
-import { readFileSync, readdirSync, mkdir } from 'fs';
-import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getDbConfig, updateEventData } from './db';
-import path from 'path';
+import { readFileSync, readdirSync, mkdir } from 'fs'
+import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getDbConfig, updateEventData } from './db'
+import { parseStringPromise } from 'xml2js'
+import { MongoClient } from 'mongodb'
+import path from 'path'
 
-const EVENT_FOLDER = './data/events';
-const SELECTION_REGEX = /--> (.*)/;
-const CARD_ROW_REGEX = /^[0-9]* (.*)/;
-const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/;
+const EVENT_FOLDER = './data/events'
+const SELECTION_REGEX = /--> (.*)/
+const CARD_ROW_REGEX = /^[0-9]* (.*)/
+const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/
 
+async function importDekFiles() {
+    const dekSources = getDbConfig().dekFiles
+    const knownSources = await executeSelectSome(`SELECT DISTINCT dekFileSource FROM mtgoCard`, {}, 'dekFileSource')
+
+    if (dekSources.filter(source => !knownSources.includes(source)).length) {
+        await executeRun(`DELETE FROM mtgoCard`)
+        const ownedCardRows = await parseStringPromise(readFileSync(dekSources.owned)).then(result => result.Deck.Cards.map(card => (
+            {
+                mtgoId: card.$.CatId,
+                numOwned: card.$.Quantity,
+                numWishlist: 0
+            }
+        )))
+        const wishlistCardRows = await parseStringPromise(readFileSync(dekSources.wishlist)).then(result => result.Deck.Cards.map(card => (
+            {
+                mtgoId: card.$.CatId,
+                numOwned: 0,
+                numWishlist: card.$.Quantity
+            }
+        )))
+        const insertRows = await extendMtgoRows(ownedCardRows.concat(wishlistCardRows))
+        await executeInsertData('mtgoCard', insertRows)
+    }
+    return
+
+}
+
+function extendMtgoRows(rows) {
+    return new Promise((resolve, reject) => {
+        const url = 'mongodb://localhost:27017';
+
+        MongoClient.connect(url, function (err, client) {
+            if (err) {
+                reject(err)
+            }
+
+            const collection = client.db('scryfall').collection('cards_en');
+
+            collection.find({mtgoId: {$in: rows.map(row => parseInt(row.mtgoId, 10))}})
+
+            client.close();
+        });
+    })
+
+}
 
 async function dataSyncLoop() {
-    const loopCadence = 1000 * 60 * 5;
+    const loopCadence = 1000 * 60 * 5
     console.log("%s Updating open events...", new Date().toISOString())
 
-    await processAllEventFiles();
+    await processAllEventFiles()
     const dbConfig = getDbConfig()
-    
-    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id');
-    const newEvents = Object.keys(dbConfig.eventSheets).filter(eventId => !knownEventIds.includes(eventId));
-    const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() }, 'id');
+
+    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
+    const newEvents = Object.keys(dbConfig.eventSheets).filter(eventId => !knownEventIds.includes(eventId))
+    const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() }, 'id')
 
     for (const event of openEvents.concat(newEvents)) {
         const sheetId = dbConfig.eventSheets[event]
@@ -28,8 +75,8 @@ async function dataSyncLoop() {
         updateEventData(sheetId)
     }
 
-    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + loopCadence));
-    setTimeout(dataSyncLoop, loopCadence);
+    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + loopCadence))
+    setTimeout(dataSyncLoop, loopCadence)
     return
 }
 
@@ -161,11 +208,11 @@ async function loadDeckAndWrite(filename, eventId) {
         );
         if (matchingRow) {
             await executeRun(`UPDATE pick SET isMain = $isMain, decklistSource = $decklistSource 
-                WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`, 
-                { 
-                    $isMain: cardRow.isMain, 
-                    $playerId: playerId, 
-                    $eventId: eventId, 
+                WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`,
+                {
+                    $isMain: cardRow.isMain,
+                    $playerId: playerId,
+                    $eventId: eventId,
                     $pickId: matchingRow.pickId,
                     $decklistSource: filename
                 }
@@ -178,7 +225,7 @@ async function loadDeckAndWrite(filename, eventId) {
                 { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }
             )
         }
-        
+
     }
     return
 }
