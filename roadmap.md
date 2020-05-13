@@ -22,3 +22,9 @@
 
 * report rounds
 * create events
+
+# MTGO Bots
+
+* pw reset
+* trading
+* account validation / collection management / reporting
