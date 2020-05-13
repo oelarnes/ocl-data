@@ -10,12 +10,14 @@ import {
     dropPlayerTable,
     dropPickTable,
     dropCubeTable,
+    dropMTGOCardTable,
     createEntryTable,
     createEventTable,
     createPairingTable,
     createPlayerTable,
     createPickTable,
-    createCubeTable
+    createCubeTable,
+    createMTGOCardTable
 } from './sqlTemplates';
 
 const Database = sqlite3.Database
@@ -100,11 +102,13 @@ async function initializeDb() {
                 .run(dropPairingTable)
                 .run(dropCubeTable)
                 .run(dropPickTable)
+                .run(dropMTGOCardTable)
                 .run(createEventTable)
                 .run(createPlayerTable)
                 .run(createPairingTable)
                 .run(createCubeTable)
                 .run(createPickTable)
+                .run(createMTGOCardTable)
                 .run(createEntryTable, [], (err) => {
                     if (err) {
                         reject(err);

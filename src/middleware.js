@@ -39,6 +39,7 @@ import {
     selectInPoolCountByCard,
     selectMatchWinsByCard,
     selectMatchLossesByCard,
+    selectOwnedMTGOCardByName,
     selectCubesForCard,
     selectCubesByType
 } from "./sqlTemplates";
@@ -69,6 +70,16 @@ function cubeTypeArgs(cubeTypes) {
         $ct4: ctArgArray[3],
         $ct5: ctArgArray[4]
     };
+}
+
+function dekStringFromRows(rows) {
+    return `<?xml version="1.0" encoding="utf-8"?>\r
+<Deck xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\r
+<NetDeckID>0</NetDeckID>\r
+<PreconstructedDeckID>0</PreconstructedDeckID>\r
+  ${rows.join('\r\n  ')}\r
+</Deck>\r
+`
 }
 
 const resolvers = {
@@ -123,6 +134,9 @@ const resolvers = {
         },
         cubeByType(parent, { cubeType }) {
             return executeSelectOne(selectCubesByType, { $cubeType: cubeType })
+        },
+        ownedDekString(parent, { cardNames }) {
+
         }
     },
     Player: {
@@ -273,7 +287,7 @@ const resolvers = {
     },
     Pick: {
         otherCardNames(parent) {
-            return parent.otherCardNamesString.split('\n');
+            return parent.otherCardNamesString?.split('\n') || [];
         },
         poolAsOfNames(parent) {
             if (parent.pickNum === undefined || parent.packNum === undefined) {
@@ -307,10 +321,23 @@ const resolvers = {
     }, 
     Deck: {
         main(parent) {
-            return parent.pool.filter(row => row.isMain);
+            return parent.pool.filter(row => row.isMain || row.isMain === null);
         }, 
         sideboard(parent) {
-            return parent.pool.filter(row => !row.isMain);
+            return parent.pool.filter(row => row.isMain === 0);
+        },
+        async ownedDekString(parent) {
+            const mainMTGOCards = await Promise.all(resolvers.Deck.main(parent).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
+            const sbMTGOCards = await Promise.all(resolvers.Deck.sideboard(parent).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
+            
+            const mainRows = mainMTGOCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {sideboard: false})
+            )
+            const sbRows = sbMTGOCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {sideboard: true})
+            )
+            const dekRows = mainRows.concat(sbRows)
+            return dekStringFromRows(dekRows)
         }
     },
     Card: {
@@ -375,29 +402,48 @@ const resolvers = {
         },
         cubesIn(parent, {asOf=new Date().toISOString()}) {
             return executeSelectSome(selectCubesForCard, {$cardName: parent.name, $asOf: asOf});
+        },
+        ownedMTGOCard(parent) {
+            return executeSelectOne(selectOwnedMTGOCardByName, {$cardName: parent.name})
         }
-
+    },
+    MTGOCard: {
+        dekRow(parent, {num=1, sideboard=false}) {
+            return `<Cards CatID="${parent.id}" Quantity="${num}" Sideboard="${sideboard ? 'true' : 'false'}" Name="${parent.mtgoName}" />`
+        },
+        card(parent) {
+            return {
+                name: parent.name
+            }
+        }
     },
     Cube: {
         cardNames(parent) {
-            return parent.listString.trim().split('\n').map(w => w.trim());
+            return parent.listString.trim().split('\n').map(w => w.trim())
         },
         cards(parent) {
-            return resolvers.Cube.cardNames(parent).map(name => ({ name }));
+            return resolvers.Cube.cardNames(parent).map(name => ({ name }))
         },
         recentEvents(parent, {howMany = MAX_RESULTS} ) {
             return executeSelectSome(selectEventByCube, {$cubeId: parent.id, $howMany: howMany})
         },
         allCubesOfType(parent) {
-            return executeSelectSome(selectCubesByType, {$cubeType: parent.cubeType});
+            return executeSelectSome(selectCubesByType, {$cubeType: parent.cubeType})
+        },
+        ownedMTGOCards(parent) {
+            return Promise.all(resolvers.Cube.cards(parent).map(card => resolvers.Card.ownedMTGOCard(card)))
+        },
+        async ownedDekString(parent) {
+            const ownedCards = await resolvers.Cube.ownedMTGOCards(parent)
+            return dekStringFromRows(ownedCards.map(mtgoCard => resolvers.MTGOCard.dekRow(mtgoCard, {})))
         }
     }
-};
+}
 
 const schema = makeExecutableSchema({
     typeDefs,
     resolvers,
-});
+})
 
 const middleware = graphqlHTTP({
     schema,

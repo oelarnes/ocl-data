@@ -81,11 +81,14 @@ CREATE TABLE IF NOT EXISTS mtgoCard(
     name TEXT,
     mtgoName TEXT,
     numOwned INTEGER,
-    numWishlist: INTEGER,
-    atAccounts: TEXT,
-    isFoil: BOOLEAN,
-    imageLocator: TEXT
-)`
+    numWishlist INTEGER,
+    atAccounts TEXT,
+    isFoil BOOLEAN,
+    imageLocator TEXT,
+    dekSource TEXT,
+    tix FLOAT,
+    tixAsOf TEXT
+);`
 //Select
 const selectPlayer = `SELECT * FROM player WHERE id = $playerId`;
 const selectEvent = `SELECT * FROM event WHERE id = $eventId`;
@@ -212,24 +215,24 @@ const selectPickOrderByCard = `SELECT SUM(pick.pickNum * 1.0)/COUNT(pick.pickNum
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType in ($ct1, $ct2, $ct3, $ct4, $ct5)
-    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`;
+    AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName`
 const selectIsMainPctByCard = `SELECT SUM(pick.isMain * 1.0)/COUNT(pick.isMain) AS isMainPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
-    AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`;
+    AND pick.isMain IS NOT NULL AND pick.cardName = $cardName`
 const selectWheelPctByCard = `SELECT SUM(CASE WHEN pick.pickNum > 8 THEN 1.0 ELSE 0.0 END)/COUNT(pick.pickNum) AS wheelPct FROM pick
     JOIN event ON pick.eventId = event.id
     JOIN cube ON event.cubeId = cube.id
     WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
     AND pick.pickNum IS NOT NULL AND pick.cardName = $cardName
-`;
+`
 const selectInPoolCountByCard = `SELECT COUNT(pick.eventId) AS inPoolCount FROM pick
 JOIN event ON pick.eventId = event.id
 JOIN cube ON event.cubeId = cube.id
 WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
 AND pick.cardName = $cardName
-`;
+`
 const selectMatchWinsByCard = `SELECT SUM(wins) as wins FROM (
     SELECT pairing.p1MatchWin AS wins FROM pairing JOIN pick 
         ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p1Id
@@ -245,7 +248,7 @@ const selectMatchWinsByCard = `SELECT SUM(wins) as wins FROM (
         WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
         AND pick.cardName = $cardName
     )   
-`;
+`
 const selectMatchLossesByCard = `SELECT SUM(losses) as losses FROM (
     SELECT pairing.p2MatchWin AS losses FROM pairing JOIN pick 
         ON pick.eventId = pairing.eventId AND pick.playerId = pairing.p1Id
@@ -261,11 +264,11 @@ const selectMatchLossesByCard = `SELECT SUM(losses) as losses FROM (
         WHERE cube.cubeType IN ($ct1, $ct2, $ct3, $ct4, $ct5)
         AND pick.cardName = $cardName
     )    
-`; 
+` 
+const selectOwnedMTGOCardByName = `SELECT * FROM mtgoCard WHERE name = $cardName and numOwned > 0`
 const selectCubesForCard = `SELECT * FROM cube
     WHERE listString LIKE '%\n' || $cardName || '\n%'
     AND activeDate <= $asOf AND inactiveDate > $asOf`
-
 const selectCubesByType = `SELECT * FROM cube
     WHERE cubeType = $cubeType ORDER BY activeDate DESC`
 
@@ -276,12 +279,14 @@ export {
     dropPairingTable,
     dropPickTable,
     dropCubeTable,
+    dropMTGOCardTable,
     createPlayerTable,
     createEventTable,
     createEntryTable,
     createPairingTable,
     createPickTable,
     createCubeTable,
+    createMTGOCardTable,
     selectPlayer,
     selectEvent,
     selectEntry,
@@ -321,6 +326,7 @@ export {
     selectInPoolCountByCard,
     selectMatchWinsByCard,
     selectMatchLossesByCard,
+    selectOwnedMTGOCardByName,
     selectCubesForCard,
     selectCubesByType
 };

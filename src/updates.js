@@ -4,77 +4,136 @@ import { parseStringPromise } from 'xml2js'
 import { MongoClient } from 'mongodb'
 import path from 'path'
 
-const EVENT_FOLDER = './data/events'
+const DATA_FOLDER = './data'
 const SELECTION_REGEX = /--> (.*)/
 const CARD_ROW_REGEX = /^[0-9]* (.*)/
 const BASIC_REGEX = /^[0-9]* (Plains|Island|Swamp|Mountain|Forest)$/
 
 async function importDekFiles() {
     const dekSources = getDbConfig().dekFiles
-    const knownSources = await executeSelectSome(`SELECT DISTINCT dekFileSource FROM mtgoCard`, {}, 'dekFileSource')
+    const knownSources = await executeSelectSome(`SELECT DISTINCT dekSource FROM mtgoCard`, {}, 'dekSource')
 
-    if (dekSources.filter(source => !knownSources.includes(source)).length) {
-        await executeRun(`DELETE FROM mtgoCard`)
-        const ownedCardRows = await parseStringPromise(readFileSync(dekSources.owned)).then(result => result.Deck.Cards.map(card => (
-            {
-                mtgoId: card.$.CatId,
-                numOwned: card.$.Quantity,
-                numWishlist: 0,
-                mtgoName: card.$.Name
-            }
-        )))
-        const wishlistCardRows = await parseStringPromise(readFileSync(dekSources.wishlist)).then(result => result.Deck.Cards.map(card => (
-            {
-                mtgoId: card.$.CatId,
-                numOwned: 0,
-                numWishlist: card.$.Quantity,
-                mtgoName: card.$.Name
-            }
-        )))
+    if (Object.values(dekSources).filter(source => !knownSources.includes(source)).length) {
+        console.log('Processing new collection dek files: %s', Object.values(dekSources).join('\n'))
+        const ownedCardRows = await parseStringPromise(readFileSync(path.join(DATA_FOLDER, dekSources.owned)))
+            .then(result => result.Deck.Cards.map(card => (
+                {
+                    id: card.$.CatID,
+                    numOwned: card.$.Quantity,
+                    numWishlist: 0,
+                    mtgoName: card.$.Name,
+                    dekSource: dekSources.owned
+                }
+            )))
+        const wishlistCardRows = await parseStringPromise(readFileSync(path.join(DATA_FOLDER, dekSources.wishlist)))
+            .then(result => result.Deck.Cards.map(card => (
+                {
+                    id: card.$.CatID,
+                    numOwned: 0,
+                    numWishlist: card.$.Quantity,
+                    mtgoName: card.$.Name,
+                    dekSource: dekSources.wishlist
+                }
+            )))
 
         const rowMap = ownedCardRows.concat(wishlistCardRows).reduce((prev, curr) => {
-            prev[curr.mtgoName] = curr;
+            prev[curr.id] = curr;
             return prev;
         }, {})
 
-        const insertRows = await extendMtgoRows(rowMap)
-        await executeInsertData('mtgoCard', insertRows)
+        const insertRowsTemp = await extendMtgoRows(rowMap)
+        const asOf = await scryfallAsOf()
+
+        const missingCards = Object.keys(rowMap).filter(
+            v => !insertRowsTemp.map(row => row.id.toString()).includes(v)
+        )
+
+        let insertRows = insertRowsTemp
+        // a few cards are missing from Scryfall by mtgo_id
+        if (missingCards.length < 0.01 * insertRows.length) {
+            insertRows = insertRowsTemp.concat(missingCards.map(idString => {
+                const dekRow = rowMap[idString]
+                return {
+                    ...dekRow,
+                    name: dekRow.mtgoName,
+                    tix: null,
+                    isFoil: false
+                }
+            }))
+        }
+
+        if (insertRows.length === Object.keys(rowMap).length) {
+            await executeRun(`DELETE FROM mtgoCard`)
+            await executeInsertData('mtgoCard', insertRows.map(row => ({
+                ...row,
+                tixAsOf: asOf
+            })))
+        } else {
+            console.log('Insufficient matching card data found, mtgoCard not updated')
+        }
     }
     return
 }
 
+async function scryfallAsOf() {
+    const url = 'mongodb://localhost:27017'
+
+    const client = await MongoClient.connect(url, {useUnifiedTopology: true})
+
+    const collection = client.db('scryfall').collection('import_metadata')
+    
+    return collection.findOne({}).then(item => item?.as_of).catch(err => {
+        console.log(err)
+        return
+    });
+}
+
+function scryfallCardName(sfRow) {
+    const useFrontFaceName = ['transform', 'flip', 'adventure']
+    if (useFrontFaceName.includes(sfRow.layout)) {
+        return sfRow.card_faces[0].name
+    }
+    return sfRow.name
+}
+
 function extendMtgoRows(rowMap) {
     return new Promise((resolve, reject) => {
-        const url = 'mongodb://localhost:27017';
+        const url = 'mongodb://localhost:27017'
 
-        MongoClient.connect(url, function (err, client) {
+        MongoClient.connect(url, {useUnifiedTopology: true}, function (err, client) {
             if (err) {
                 reject(err)
             }
 
-            const collection = client.db('scryfall').collection('cards_en');
+            const collection = client.db('scryfall').collection('cards_en')
+            const mtgoIds = Object.keys(rowMap).map(key => parseInt(key))
 
-            collection.find({mtgoId: {$in: Object.keys(rowMap)}}).toArray((err, items) => {
+            collection.find({mtgo_id: {$in: mtgoIds}}).toArray((err, items) => {
                 if (err) {
                     reject(err)
                 }
-                resolve(items);
-            })
-
-            client.close();
+                resolve(items)
+                client.close()
+            })            
         });
-    }).then(rows => rows.map(row => {
-        const oldRow = rowMap[row]
-        return {
-            ...oldRow,
-            name: row.name
+    }).then(rows => 
+        {
+            return rows.map(row => {
+                const oldRow = rowMap[row.mtgo_id.toString()]
+                return {
+                    ...oldRow,
+                    name: scryfallCardName(row),
+                    tix: row.prices.tix,
+                    isFoil: false
+                }
+            })
         }
-    }))
+    )
 }
 
 async function dataSyncLoop() {
     const loopCadence = 1000 * 60 * 5
-    console.log("%s Updating open events...", new Date().toISOString())
+    console.log('%s Updating open events...', new Date().toISOString())
 
     await processAllEventFiles()
     await importDekFiles()
@@ -99,21 +158,23 @@ async function dataSyncLoop() {
 }
 
 function fileIsDecklist(filename) {
-    const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '');
+    const fileContents = readFileSync(filename, 'utf-8').replace(/\r/g, '')
     const deckLines = fileContents.split('=\n').slice(-1)[0].split('\n').map(r => r.trim())
     return deckLines.filter(row => CARD_ROW_REGEX.test(row) && !BASIC_REGEX.test(row)).length <= 45
-        && deckLines.filter(row => !CARD_ROW_REGEX.test(row) && !BASIC_REGEX.test(row)).length <= 2;
+        && deckLines.filter(row => !CARD_ROW_REGEX.test(row) && !BASIC_REGEX.test(row)).length <= 2
 }
 
 function fileIsDraftLog(filename) {
-    const fileContents = readFileSync(filename, 'utf-8');
+    const fileContents = readFileSync(filename, 'utf-8')
     const selectionLines = fileContents.split('\n').filter(line => SELECTION_REGEX.test(line))
     return selectionLines.length == 46
 }
 
 async function processAllEventFiles() {
-    const allEventIds = await executeSelectSome('SELECT id FROM event;', {}, 'id');
-    const allFolders = readdirSync(EVENT_FOLDER).filter(item => allEventIds.includes(item));
+    const allEventIds = await executeSelectSome('SELECT id FROM event;', {}, 'id')
+    const allFolders = readdirSync(
+        path.join(DATA_FOLDER, 'events')
+    ).filter(item => allEventIds.includes(item))
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
         console.log('Creating event folder for %s', item)
@@ -128,7 +189,7 @@ async function processAllEventFiles() {
 }
 
 async function processOneEvent(eventId) {
-    const eventPath = path.join(EVENT_FOLDER, eventId)
+    const eventPath = path.join(DATA_FOLDER, 'events', eventId)
     const txtFileNames = readdirSync(eventPath).filter(item => /\.txt$/.test(item));
 
     const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
@@ -162,9 +223,9 @@ async function processOneEvent(eventId) {
 }
 
 async function loadLogAndWrite(filename, eventId, seatings) {
-    const processedLog = processLog(readFileSync(path.join(EVENT_FOLDER, eventId, filename), 'utf-8'));
+    const processedLog = processLog(readFileSync(path.join(DATA_FOLDER, 'events', eventId, filename), 'utf-8'));
 
-    const playerId = seatings[processedLog.seatNum - 1];
+    const playerId = seatings[processedLog.seatNum - 1]
     const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName');
     console.log(`Inferred identity of ${processedLog.playerTag} as ${fullName} in event ${eventId}`);
 
@@ -175,17 +236,17 @@ async function loadLogAndWrite(filename, eventId, seatings) {
             eventId,
             draftlogSource: filename
         }
-    });
+    })
 
-    return executeInsertData('pick', uploadTable);
+    return executeInsertData('pick', uploadTable)
 }
 
 async function loadDeckAndWrite(filename, eventId) {
-    const processedDeck = processDeck(readFileSync(path.join(EVENT_FOLDER, eventId, filename), 'utf-8'));
-    let playerId;
+    const processedDeck = processDeck(readFileSync(path.join(DATA_FOLDER, 'events', eventId, filename), 'utf-8'))
+    let playerId
 
     if (!processedDeck.cardRows) {
-        throw `Decklist file ${filename} for event ${eventId} has no cards.`;
+        throw `Decklist file ${filename} for event ${eventId} has no cards.`
     }
     if (processedDeck.playerFullName === undefined) {
         playerId = await executeSelectSome(

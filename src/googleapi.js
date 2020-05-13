@@ -24,7 +24,8 @@ function authorize(credentials, callback) {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getNewToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
-    callback(oAuth2Client);
+    // limit 100 requests per 100 seconds per user on google API
+    setTimeout(() => callback(oAuth2Client), 1001)
   });
 }
 

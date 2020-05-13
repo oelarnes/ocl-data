@@ -121,7 +121,7 @@ type Deck {
     pool: [Pick]
     main: [Pick]
     sideboard: [Pick]
-    # ownedDekFile(stylePref: String): String
+    ownedDekString: String
 }
 type MTGOCard {
     id: Int!
@@ -131,7 +131,7 @@ type MTGOCard {
     numWishlist: Int
 #    styleClass: String
     isFoil: Boolean
-    dekRow(howMany: Int, isSideboard: Boolean): String
+    dekRow(num: Int, sideboard: Boolean): String
 #    numAtAccount(oclAccount: String): Int
     card: Card
 }
@@ -148,7 +148,7 @@ type Card {
     bayesianWinRate(cubeTypes: [CubeType], vol: Float): Float
     cubesIn: [Cube]    
     recentEntries(howMany: Int): [Entry]
-#     ownedMTGOCard(stylePref: String): MTGOCard
+    ownedMTGOCard: MTGOCard
 }
 
 type Cube {
@@ -161,8 +161,8 @@ type Cube {
     cards: [Card]
     recentEvents: [OCLEvent]
     allCubesOfType: [Cube]
-    # ownedMTGOCards: [MTGOCard]
-    # ownedDekExport: String
+    ownedMTGOCards: [MTGOCard]
+    ownedDekString: String
 }
 
 type Query {
@@ -175,4 +175,5 @@ type Query {
     standings(season: String, howMany: Int, after: Int): [Standing]
     card(name: String): Card
     cubeByType(cubeType: CubeType): Cube
+    ownedDekString(cardNames: [String]): String
 } 
