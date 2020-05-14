@@ -412,9 +412,9 @@ const schema = makeExecutableSchema({
     resolvers,
 })
 
-const middleware = graphqlHTTP({
+const oclData = graphqlHTTP({
     schema,
     graphiql: true,
 })
 
-export { middleware }
+export { oclData }

@@ -5,10 +5,10 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "babel src --out-dir lib",
-    "watch": "babel --watch src --out-dir lib",
+    "watch": "babel --watch src --out-dir lib ; OCL_ENV=dev ./lib/initialize.js",
     "test": "OCL_ENV=test jest",
-    "install": "npm run build ; OCL_ENV=prod node ./lib/initialize.js",
-    "start": "OCL_ENV=prod node ./lib/index.js",    
+    "install": "npm run build",
+    "start": "OCL_ENV=prod ./lib/initialize.js & OCL_ENV=prod node ./lib/index.js",    
     "nodemon": "npm run watch & OCL_ENV=dev nodemon"
   },
   "repository": {
