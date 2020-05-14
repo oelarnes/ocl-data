@@ -177,3 +177,7 @@ type Query {
     cubeByType(cubeType: CubeType): Cube
     ownedDekString(cardNames: [String]): String
 } 
+
+type Mutation {
+    syncData: Boolean
+}

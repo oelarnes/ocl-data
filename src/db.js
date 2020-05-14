@@ -4,7 +4,7 @@ import { Database } from 'sqlite3'
 import ini from 'ini'
 
 import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, closeEntries } from './googleapi'
-import sql from './sqlTemplates'
+import * as sql from './sqlTemplates'
 
 const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'))
 function getDb() {
@@ -105,8 +105,8 @@ async function initializeDb() {
         console.log(err)
     })
 
-    await Promise.all(['player', 'event', 'entry', 'pairing', 'cube'].map((tableName) => {
-        return getDataTable(tableName, dbConfig.masterSheet.sheetId).then((values) => {
+    for (const tableName of ['player', 'event', 'entry', 'pairing', 'cube']) {
+        await getDataTable(tableName, dbConfig.masterSheet.sheetId).then((values) => {
             return Promise.all(
                 replaceStatements(tableName)(values).map(statement => {
                     return new Promise((resolve, reject) => {
@@ -121,8 +121,8 @@ async function initializeDb() {
                     })
                 })
             )
-        })
-    }))
+        });
+    }
 
     db.close()
 
@@ -154,12 +154,12 @@ async function updateEventData(sheetId) {
                     })
                 }).catch(err => {
                     console.log(err)
-                })   
+                })
             }
         })
     }
     db.close()
-    
+
 
     const todayString = new Date().toISOString()
     // check pairings
@@ -169,7 +169,7 @@ async function updateEventData(sheetId) {
 
     await writePairingCompletedDate(sheetId, newCompletedDates)
 
-    const eventCompletedDate = await executeSelectOne(`SELECT completedDate FROM event WHERE id = $eventId`, {$eventId: eventId}, 'completedDate')
+    const eventCompletedDate = await executeSelectOne(`SELECT completedDate FROM event WHERE id = $eventId`, { $eventId: eventId }, 'completedDate')
 
     if (eventCompletedDate > todayString && !newCompletedDates.filter(date => date > todayString).length) {
         writeEventCompletedDate(sheetId)

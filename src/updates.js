@@ -137,12 +137,13 @@ async function dataSync() {
             throw `No event sheet for open event ${event}`
         }
         console.log('Updating data for open event %s', event)
-        updateEventData(sheetId)
+        await updateEventData(sheetId)
     }
+    return
 }
 
 async function dataSyncLoop(cadence = 1000 * 60 * 5) {
-    dataSync()
+    await dataSync()
 
     console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + cadence))
     setTimeout(dataSyncLoop, cadence)
@@ -389,5 +390,6 @@ export {
     processDeck,
     fileIsDecklist,
     fileIsDraftLog,
-    dataSyncLoop
+    dataSyncLoop,
+    dataSync
 }

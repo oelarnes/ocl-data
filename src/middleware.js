@@ -4,7 +4,8 @@ import graphqlHTTP from "express-graphql"
 import { makeExecutableSchema } from "graphql-tools"
 
 import { executeSelectOne, executeSelectSome } from "./db"
-import sql from "./sqlTemplates"
+import * as sql from "./sqlTemplates"
+import { dataSync } from "./updates"
 
 const MAX_RESULTS = 10000
 const MAX_DATE = "9999-12-31"
@@ -58,10 +59,10 @@ const resolvers = {
                 $howMany: howMany,
             })
         },
-        playerSearch(_parent, { byName = '_FULLNAME_SENTINEL_XX', byHandle = '_HANDLE_SENTINEL_XX' }) {
+        playerSearch(_, { byName = '_FULLNAME_SENTINEL_XX', byHandle = '_HANDLE_SENTINEL_XX' }) {
             return executeSelectSome(sql.selectPlayersByNameOrHandleSearch, { $byName: byName, $byHandle: byHandle })
         },
-        event(_parent, { id }) {
+        event(_, { id }) {
             return executeSelectOne(sql.selectEvent, { $eventId: id })
         },
         events(
@@ -74,27 +75,33 @@ const resolvers = {
 
             return executeSelectSome(query, { $howMany: howMany, $after: after })
         },
-        entry(_parent, { playerId, eventId }) {
+        entry(_, { playerId, eventId }) {
             return executeSelectOne(sql.selectEntry, {
                 $playerId: playerId,
                 $eventId: eventId,
             })
         },
-        standings(_parent, { season, howMany = MAX_RESULTS, after = 0 }) {
+        standings(_, { season, howMany = MAX_RESULTS, after = 0 }) {
             const [query, args] = season === undefined ?
                 [sql.selectStandingsAllTime, { $howMany: howMany, $after: after }]
                 :
                 [sql.selectStandingsBySeason, { $season: season, $howMany: howMany, $after: after }]
             return executeSelectSome(query, args)
         },
-        card(_parent, { name }) {
+        card(_, { name }) {
             return { name }
         },
-        cubeByType(parent, { cubeType }) {
+        cubeByType(_, { cubeType }) {
             return executeSelectOne(sql.selectCubesByType, { $cubeType: cubeType })
         },
         ownedDekString(parent, { cardNames }) {
 
+        }
+    },
+    Mutation: {
+        async syncData(_) {
+            await dataSync()
+            return true
         }
     },
     Player: {
