@@ -405,7 +405,13 @@ const resolvers = {
     }
 }
 
-const typeDefs = readFileSync("./src/schema.graphql", "utf-8")
+let typeDefs
+try {
+    typeDefs = readFileSync("./src/schema.graphql", "utf-8")
+} catch (_) {
+    // sorry
+    typeDefs = readFileSync("./node_modules/ocl-data/src/schema.graphql", "utf-8")
+}  
 
 const schema = makeExecutableSchema({
     typeDefs,
