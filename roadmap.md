@@ -28,3 +28,9 @@
 * pw reset
 * trading
 * account validation / collection management / reporting
+
+# Machine Learning
+
+* Pick Intensity
+* W/L Adjustment
+* Cube clustering/embedding

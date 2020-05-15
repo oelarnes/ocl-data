@@ -1,6 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
-const {google} = require('googleapis');
+
+const { google } = require('googleapis');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -16,9 +17,9 @@ const TOKEN_PATH = 'google-auth/token.json';
  * @param {function} callback The callback to call with the authorized client.
  */
 function authorize(credentials, callback) {
-  const {client_secret, client_id, redirect_uris} = credentials.installed;
+  const { client_secret, client_id, redirect_uris } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
-      client_id, client_secret, redirect_uris[0]);
+    client_id, client_secret, redirect_uris[0]);
 
   // Check if we have previously stored a token.
   fs.readFile(TOKEN_PATH, (err, token) => {
@@ -67,7 +68,7 @@ function getNewToken(oAuth2Client, callback) {
  */
 function fetchTableAndResolve(resolve, reject, tableName, spreadsheetId) {
   return function getDataTable(auth) {
-    const sheets = google.sheets({version: 'v4', auth});
+    const sheets = google.sheets({ version: 'v4', auth });
     sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${tableName}!A1:M`,
@@ -92,11 +93,11 @@ export function getDataTable(tableName, spreadsheetId) {
       authorize(JSON.parse(content), dataFetch);
     });
   })
-} 
+}
 
-export async function writePairingCompletedDate(spreadsheetId, values) {  
-  function writeFn(auth) {  
-    const sheets = google.sheets({version: 'v4', auth});
+export async function writePairingCompletedDate(spreadsheetId, values) {
+  function writeFn(auth) {
+    const sheets = google.sheets({ version: 'v4', auth });
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `pairing!K2:K13`,
@@ -116,9 +117,9 @@ export async function writePairingCompletedDate(spreadsheetId, values) {
 }
 
 
-export async function writeEventCompletedDate(spreadsheetId) {  
-  function writeFn(auth) {  
-    const sheets = google.sheets({version: 'v4', auth});
+export async function writeEventCompletedDate(spreadsheetId) {
+  function writeFn(auth) {
+    const sheets = google.sheets({ version: 'v4', auth });
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `event!D2:D2`,
@@ -126,8 +127,8 @@ export async function writeEventCompletedDate(spreadsheetId) {
       resource: {
         values: [[new Date().toISOString()]]
       },
-      
-    }, );
+
+    });
   }
   return new Promise((resolve, reject) => {
     fs.readFile('google-auth/credentials.json', (err, content) => {
@@ -138,9 +139,9 @@ export async function writeEventCompletedDate(spreadsheetId) {
   }).then(writeFn);
 }
 
-export async function closeEntries(spreadsheetId) {  
-  function writeFn(auth) {  
-    const sheets = google.sheets({version: 'v4', auth});
+export async function closeEntries(spreadsheetId) {
+  function writeFn(auth) {
+    const sheets = google.sheets({ version: 'v4', auth });
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `entry!E2:E9`,
@@ -148,7 +149,7 @@ export async function closeEntries(spreadsheetId) {
       resource: {
         values: new Array(8).fill([0])
       },
-    }, );
+    });
   }
   return new Promise((resolve, reject) => {
     fs.readFile('google-auth/credentials.json', (err, content) => {

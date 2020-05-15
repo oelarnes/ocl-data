@@ -1,25 +1,22 @@
-import express from 'express'
 import http from 'http'
 
-import {initializeDb} from './db'
-import {middleware} from './middleware'
-import { dataSyncLoop } from './updates'
+import express from 'express'
+
+import { oclData } from './middleware'
+import { initializeDb } from './db'
+import { dataSync, dataSyncLoop } from './updates'
 
 if (require.main === module) {
     const app = express()
-        
-    // initializeDb().then(() => {
-    //     console.log('SQL Database initialized')
-    // }).then(dataSyncLoop)
- 
+
     dataSyncLoop()
 
     app.use('/data', middleware)
 
-    const server = http.createServer(app) 
+    const server = http.createServer(app)
 
-    server.listen(4010) 
-    console.log('GraphQL server started on port %s', (server.address()).port) 
-} 
+    server.listen(4000)
+    console.log('GraphQL server started on port %s', (server.address()).port)
+}
 
-export {middleware}
+export { oclData, dataSync, dataSyncLoop, initializeDb }
