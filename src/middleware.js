@@ -132,11 +132,12 @@ const resolvers = {
         card(_parent, { name }) {
             return { name }
         },
-        cubeByType(parent, { cubeType }) {
+        cubeByType(_parent, { cubeType }) {
             return executeSelectOne(selectCubesByType, { $cubeType: cubeType })
         },
-        ownedDekString(parent, { cardNames }) {
-
+        async ownedDekString(_parent, { cardNames }) {
+            const mtgoCards = await Promise.all(cardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
+            return dekStringFromRows(mtgoCards.map(card => resolvers.MTGOCard.dekRow(card)))
         }
     },
     Player: {
