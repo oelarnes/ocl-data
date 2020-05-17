@@ -201,15 +201,16 @@ function executeInsertData(tableName, dataTable) {
     return Promise.all(dataTable.map((row) => {
         const { query, args } = insertStatement(tableName, row)
         return new Promise((resolve, reject) => {
-            db.run(query, args, (err) => {
+            db.run(query, args, function(err) {
                 if (err) {
                     reject(err)
                 }
-                resolve()
+                resolve(this.lastID)
             })
         })
-    })).then(() => {
+    })).then((ids) => {
         db.close()
+        return ids
     }).catch((err) => {
         console.log(err)
         db.close()

@@ -383,7 +383,7 @@ function processDeck(decklist) {
         playerFullName
     }
 }
-function writeDraftStats(draftStats) {
+async function writeDraftStats(draftStats) {
     const handleIdMap = await executeSelectSome(`SELECT * FROM player`).then(rows => rows.reduce((prev, cur) => {
         prev[cur.discordHandle] = cur.id
         return prev
