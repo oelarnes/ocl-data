@@ -193,12 +193,10 @@ async function processOneEvent(eventId) {
     )
 
     const logFileNames = txtFileNames.filter(filename => fileIsDraftLog(path.join(eventPath, filename)))
-    const deckFileNames = txtFileNames.filter(filename => fileIsDecklist(path.join(eventPath, filename)))
-
-    const newFiles = logFileNames.concat(deckFileNames).filter(filename => !allSources.includes(filename))
-
-    if (newFiles.length > 0) {
-        console.log(`Found new file ${newFiles[0]} and ${newFiles.length - 1} others in event ${eventId}. Processing now...`)
+    const newLogFiles = logFileNames.filter(filename => !allSources.includes(filename))
+    
+    if (newLogFiles.length > 0) {
+        console.log(`Found new log file ${newLogFiles[0]} and ${newLogFiles.length - 1} others in event ${eventId}. Reprocessing picks now...`)
 
         await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId })
         const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId')
@@ -206,7 +204,13 @@ async function processOneEvent(eventId) {
         for (const filename of logFileNames) {
             await loadLogAndWrite(filename, eventId, seatings)
         }
+    }
 
+    const deckFileNames = txtFileNames.filter(filename => fileIsDecklist(path.join(eventPath, filename)))
+    const newDeckFiles = deckFileNames.filter(filename => !allSources.includes(filename))
+
+    if (newDeckFiles.length > 0) {
+        console.log(`Found new deck file ${newDeckFiles[0]} and ${newDeckFiles.length - 1} others in event ${eventId}. Reprocessing picks now...`)
         for (const filename of deckFileNames) {
             await loadDeckAndWrite(filename, eventId)
         }
@@ -388,7 +392,7 @@ async function writeDraftStats(draftStats) {
         prev[cur.discordHandle] = cur.id
         return prev
     }, {}))
-    
+
     for (const handle of Object.keys(draftStats.draft)) {
         if (handleIdMap[handle] !== undefined) {
             await executeInsertData('pick', draftStats.draft[handle].map((pick, index) => ({
