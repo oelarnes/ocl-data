@@ -5,14 +5,19 @@ import ini from 'ini'
 
 import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, closeEntries } from './googleapi'
 import * as sql from './sqlTemplates'
+import { MongoClient } from 'mongodb'
 
 const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'))
 function getDb() {
-    return new Database(dbConfig.dbSpec[process.env.OCL_ENV || 'test'])
+    return new Database(dbConfig.sqlite[process.env.OCL_ENV || 'test'])
 }
 
 function getFreshDbConfig() {
     return ini.parse(readFileSync('./data/env.ini', 'utf-8'))
+}
+
+function oclMongo() {
+    return MongoClient.connect(dbConfig.mongo.uri).then(client => client.db(dbConfig.mongo[process.env.OCL_ENV || 'test']))
 }
 
 function executeSelectOne(query, args, extractProp) {
@@ -242,5 +247,6 @@ export {
     executeInsertData,
     executeRun,
     initializeDb,
+    oclMongo,
     updateEventData
 }

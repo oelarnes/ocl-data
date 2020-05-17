@@ -1,10 +1,10 @@
-import { readFileSync, readdirSync, promises as fsPromises } from 'fs'
+import { readFileSync, readdirSync, mkdir } from 'fs'
 import path from 'path'
 
 import { parseStringPromise } from 'xml2js'
-import { MongoClient } from 'mongodb'
 
 import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getFreshDbConfig, updateEventData } from './db'
+import { oclMongo } from '../lib/db'
 
 const DATA_FOLDER = './data'
 const SELECTION_REGEX = /--> (.*)/
@@ -78,13 +78,9 @@ async function importDekFiles() {
 }
 
 async function scryfallAsOf() {
-    const url = 'mongodb://localhost:27017'
-
-    const client = await MongoClient.connect(url, { useUnifiedTopology: true })
-
-    const collection = client.db('scryfall').collection('import_metadata')
-
-    return collection.findOne({}).then(item => item?.as_of).catch(err => {
+    const mongo = await oclMongo()
+    
+    return mongo.collection('import_metadata').findOne({}).then(item => item?.as_of).catch(err => {
         console.log(err)
         return
     })
@@ -100,10 +96,9 @@ function scryfallCardName(sfRow) {
 
 async function extendMtgoRows(rowMap) {
     const mtgoIds = Object.keys(rowMap).map(key => parseInt(key))
+    const mongo = await oclMongo()
 
-    const client = await MongoClient.connect('mongodb://localhost:27017', { useUnifiedTopology: true })
-
-    const rows = await client.db('scryfall').collection('cards_en').find(
+    const rows = await mongo.collection('cards_en').find(
         { mtgo_id: { $in: mtgoIds } }
     ).toArray()
 
@@ -169,9 +164,9 @@ async function processAllEventFiles() {
         path.join(DATA_FOLDER, 'events')
     ).filter(item => allEventIds.includes(item))
 
-    allEventIds.filter(item => !allFolders.includes(item)).forEach(async item => {
+    allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
         console.log('Creating event folder for %s', item)
-        await fsPromises.mkdir(`./data/events/${item}`, )
+        mkdir('./data/events/%s', item)
     })
 
     for (const eventId of allFolders) {

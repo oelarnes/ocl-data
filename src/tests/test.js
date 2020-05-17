@@ -1,20 +1,12 @@
 import { getDb, executeSelectOne, executeInsertData } from "../db";
-import { processLog } from '../draftLogs';
 import { readFileSync } from 'fs';
-import { processDeck, fileIsDecklist } from "../../lib/draftLogs";
+import { processLog, processDeck, fileIsDecklist } from "../updates";
 
 afterAll(() => {
     const db = getDb();
 
     db.run('DROP TABLE test;');
     db.close();
-});
-
-test('Test database has no test table', () => {
-    const catchFn = jest.fn();
-    return executeSelectOne('SELECT * FROM test LIMIT 1').catch(catchFn).then(
-        () => expect(catchFn).toHaveBeenCalled()
-    );
 });
 
 test('We can create a table in the test database', () => {
@@ -34,7 +26,7 @@ test('And insert data into it', () => {
     return expect(executeInsertData('test', [{
         x1: 'a',
         x2: 5
-    }])).resolves.toBeUndefined();
+    }])).resolves.toEqual([1]);
 });
 
 test('We can get the data we inserted with parameters', () => {
@@ -82,6 +74,6 @@ test('We can parse a decklist with a name row', () => {
 });
 
 test('We can recognize decklists', () => {
-    const filename = './test-data/test-decklists-2.txt';
+    const filename = './test-data/test-decklist-2.txt';
     expect(fileIsDecklist(filename)).toBe(true);
 })
