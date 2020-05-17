@@ -384,21 +384,23 @@ function processDeck(decklist) {
     }
 }
 async function writeDraftStats(draftStats) {
-    
     const handleIdMap = await executeSelectSome(`SELECT * FROM player`).then(rows => rows.reduce((prev, cur) => {
         prev[cur.discordHandle] = cur.id
         return prev
     }, {}))
+    
     for (const handle of Object.keys(draftStats.draft)) {
-        await executeInsertData('pick', draftStats.draft[handle].map((pick, index) => ({
-            playerId: handleIdMap[handle],
-            eventId: draftStats.title,
-            cardName: pick.picked,
-            otherCardNamesString: pick.notPicked.join('\n'),
-            pickId: index + 1,
-            packNum: Math.floor(index / 15) + 1,
-            pickNum: index % 15 + 1
-        })));
+        if (handleIdMap[handle] !== undefined) {
+            await executeInsertData('pick', draftStats.draft[handle].map((pick, index) => ({
+                playerId: handleIdMap[handle],
+                eventId: draftStats.title,
+                cardName: pick.picked,
+                otherCardNamesString: pick.notPicked.join('\n'),
+                pickId: index + 1,
+                packNum: Math.floor(index / 15) + 1,
+                pickNum: index % 15 + 1
+            })));
+        }
     }
     return true
 }
