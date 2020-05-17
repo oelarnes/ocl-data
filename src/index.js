@@ -11,7 +11,7 @@ if (require.main === module) {
 
     dataSyncLoop()
 
-    app.use('/data', middleware)
+    app.use('/data', oclData)
 
     const server = http.createServer(app)
 
