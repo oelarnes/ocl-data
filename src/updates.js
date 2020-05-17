@@ -383,6 +383,22 @@ function processDeck(decklist) {
         playerFullName
     }
 }
+function writeDraftStats(draftStats) {
+    const handleIdMap = await executeSelectSome(`SELECT * FROM player`).then(rows => rows.reduce((prev, cur) => {
+        prev[cur.discordHandle] = cur.id
+        return prev
+    }, {}))
+    const insertRows = Object.keys(draftStats.draft).map((handle, index) => ({
+        playerId: handleIdMap[handle],
+        eventId: draftStats.title,
+        cardName: draftStats.draft[handle].picked,
+        otherCardNamesString: draftStats.draft[handle].notPicked.join('\n'),
+        pickId: index + 1,
+        packNum: Math.floor(index / 15) + 1,
+        pickNum: index % 15 + 1
+    }));
+    return executeInsertData('pick', insertRows);
+}
 
 export {
     processAllEventFiles,
@@ -391,5 +407,6 @@ export {
     fileIsDecklist,
     fileIsDraftLog,
     dataSyncLoop,
-    dataSync
+    dataSync,
+    writeDraftStats
 }
