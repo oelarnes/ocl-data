@@ -17,7 +17,7 @@ function getFreshDbConfig() {
 }
 
 function oclMongo() {
-    return MongoClient.connect(dbConfig.mongo.uri).then(client => client.db(dbConfig.mongo[process.env.OCL_ENV || 'test']))
+    return MongoClient.connect(dbConfig.mongo.uri, { useUnifiedTopology: true }).then(client => client.db(dbConfig.mongo[process.env.OCL_ENV || 'test']))
 }
 
 function executeSelectOne(query, args, extractProp) {
