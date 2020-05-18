@@ -164,9 +164,9 @@ async function processAllEventFiles() {
         path.join(DATA_FOLDER, 'events')
     ).filter(item => allEventIds.includes(item))
 
-    allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
+    allEventIds.filter(item => !allFolders.includes(item)).forEach(async item => {
         console.log('Creating event folder for %s', item)
-        await fsPromise.mkdir(`./data/events/${item}`)
+        fsPromise.mkdir(`./data/events/${item}`)
     })
 
     for (const eventId of allFolders) {
