@@ -102,8 +102,6 @@ async function extendMtgoRows(rowMap) {
         { mtgo_id: { $in: mtgoIds } }
     ).toArray()
 
-    client.close()
-
     return rows.map(row => {
         const baseRow = rowMap[row.mtgo_id.toString()]
         return {
