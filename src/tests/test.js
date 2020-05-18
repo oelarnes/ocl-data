@@ -26,7 +26,7 @@ test('And insert data into it', () => {
     return expect(executeInsertData('test', [{
         x1: 'a',
         x2: 5
-    }])).resolves.toEqual([1]);
+    }])).resolves.toEqual(1);
 });
 
 test('We can get the data we inserted with parameters', () => {

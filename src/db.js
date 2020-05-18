@@ -215,7 +215,7 @@ function executeInsertData(tableName, dataTable) {
         })
     })).then((ids) => {
         db.close()
-        return ids
+        return ids.length
     }).catch((err) => {
         console.log(err)
         db.close()

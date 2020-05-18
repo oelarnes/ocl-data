@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, mkdir } from 'fs'
+import { readFileSync, readdirSync, promise as fsPromise } from 'fs'
 import path from 'path'
 
 import { parseStringPromise } from 'xml2js'
@@ -166,7 +166,7 @@ async function processAllEventFiles() {
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(item => {
         console.log('Creating event folder for %s', item)
-        mkdir('./data/events/%s', item)
+        await fsPromise.mkdir(`./data/events/${item}`)
     })
 
     for (const eventId of allFolders) {
