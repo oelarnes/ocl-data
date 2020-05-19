@@ -105,7 +105,6 @@ dist
 
 # sqlite data store
 data
-lib
 
 #google api authentication
 google-auth
