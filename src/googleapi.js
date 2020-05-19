@@ -139,6 +139,49 @@ export async function writeEventCompletedDate(spreadsheetId) {
   }).then(writeFn);
 }
 
+
+export async function writeEventId(spreadsheetId, eventId) {
+  function writeFn(auth) {
+    const sheets = google.sheets({ version: 'v4', auth });
+    return sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Bracket!A1:A1`,
+      valueInputOption: "RAW",
+      resource: {
+        values: [[eventId]]
+      }
+    });
+  }
+  return new Promise((resolve, reject) => {
+    fs.readFile('google-auth/credentials.json', (err, content) => {
+      if (err) reject(err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), resolve);
+    });
+  }).then(writeFn);
+}
+
+export async function writeSeatingsToSheet(spreadsheetId, playerIds) {
+  function writeFn(auth) {
+    const sheets = google.sheets({ version: 'v4', auth });
+    return sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `entry!B2:B9`,
+      valueInputOption: "RAW",
+      resource: {
+        values: playerIds
+      }
+    });
+  }
+  return new Promise((resolve, reject) => {
+    fs.readFile('google-auth/credentials.json', (err, content) => {
+      if (err) reject(err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), resolve);
+    });
+  }).then(writeFn);
+}
+
 export async function closeEntries(spreadsheetId) {
   function writeFn(auth) {
     const sheets = google.sheets({ version: 'v4', auth });

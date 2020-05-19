@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, promises as fsPromises } from 'fs'
+import { readFileSync, readdirSync, promises as fsPromises, existsSync, mkdirSync } from 'fs'
 import path from 'path'
 
 import { parseStringPromise } from 'xml2js'
@@ -116,22 +116,35 @@ async function extendMtgoRows(rowMap) {
 async function dataSync() {
     console.log('%s Looking for new source files and updating open events...', new Date().toISOString())
 
-    await processAllEventFiles()
-    await importDekFiles()
     const dbConfig = getFreshDbConfig()
 
-    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
+    // first make sure there are event folders for every event in the config
     const newEvents = Object.keys(dbConfig.eventSheets).filter(eventId => !knownEventIds.includes(eventId))
+    for (const eventId of newEvents) {
+        const eventPath = path.join(DATA_FOLDER, 'events', eventId)
+        if(!existsSync(eventPath)) {
+            mkdirSync(eventPath)
+        }
+    }
+
+    // process logs, since we use them to push to seatings
+    await processAllEventFiles()
+
+    //then update events
+    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
     const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() }, 'id')
 
-    for (const event of openEvents.concat(newEvents)) {
-        const sheetId = dbConfig.eventSheets[event]
+    for (const eventId of openEvents.concat(newEvents)) {
+        const sheetId = dbConfig.eventSheets[eventId]
         if (sheetId === undefined) {
             throw `No event sheet for open event ${event}`
         }
         console.log('Updating data for open event %s', event)
-        await updateEventData(sheetId)
+        await updateEventData(eventId, sheetId)
     }
+    
+    await importDekFiles()
+
     return
 }
 
@@ -162,14 +175,16 @@ function fileIsDraftLog(filename) {
 }
 
 async function processAllEventFiles() {
-    const allEventIds = await executeSelectSome('SELECT id FROM event', {}, 'id')
+    const allEventIdsInDb = await executeSelectSome('SELECT id FROM event', {}, 'id')
+    const allEventIds = [...Set(allEventIdsInDb.concat(Object.keys(getFreshDbConfig().eventSheets)))]
+    
     const allFolders = readdirSync(
         path.join(DATA_FOLDER, 'events')
     ).filter(item => allEventIds.includes(item))
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(async item => {
         console.log('Creating event folder for %s', item)
-        fsPromises.mkdir(`./data/events/${item}`)
+        await fsPromises.mkdir(`./data/events/${item}`)
     })
 
     for (const eventId of allFolders) {
@@ -182,7 +197,7 @@ async function processAllEventFiles() {
 async function processOneEvent(eventId) {
     const eventPath = path.join(DATA_FOLDER, 'events', eventId)
     const txtFileNames = readdirSync(eventPath).filter(item => /\.txt$/.test(item))
-
+    
     const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
         UNION ALL 
         SELECT decklistSource AS source FROM pick WHERE eventId = $eventId`,
@@ -197,7 +212,11 @@ async function processOneEvent(eventId) {
         console.log(`Found new log file ${newLogFiles[0]} and ${newLogFiles.length - 1} others in event ${eventId}. Reprocessing picks now...`)
 
         await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId })
-        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId')
+        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC AND playerId IS NOT NULL', { $eventId: eventId }, 'playerId')
+
+        if(seatings.length != 8) {
+            await executeRun(`DELETE FROM entry WHERE eventId = $eventId`, {$eventId: eventId})
+        }
 
         for (const filename of logFileNames) {
             await loadLogAndWrite(filename, eventId, seatings)
@@ -218,13 +237,24 @@ async function processOneEvent(eventId) {
 }
 
 async function loadLogAndWrite(filename, eventId, seatings) {
-    const processedLog = processLog(readFileSync(path.join(DATA_FOLDER, 'events', eventId, filename), 'utf-8'))
-
-    const playerId = seatings[processedLog.seatNum - 1]
-    const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName')
-    console.log(`Inferred identity of ${processedLog.playerTag} as ${fullName} in event ${eventId}`)
-
-    const uploadTable = processedLog.logRows.map((logRow) => {
+    const {seatNum, playerTag, logRows} = processLog(readFileSync(path.join(DATA_FOLDER, 'events', eventId, filename), 'utf-8'))
+    let playerId
+    if (seatings.length === 8) {
+        playerId = seatings[seatNum - 1]
+        const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName')
+        console.log(`Inferred identity of ${playerTag} as ${fullName} in event ${eventId}`)
+    } else {
+        playerId = playerTag
+        const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName')
+        if (fullName !== undefined) {
+            await executeInsertData(`INSERT INTO entry(eventId, playerId, seatNum) VALUES ($eventId, $playerId, $seatNum)`, {$eventId: eventId, $playerId: playerId, $seatNum: seatNum})
+            console.log(`Inserting seating for ${fullName} at seat ${seatNum} in event ${eventId}`)
+        } else {
+            console.log(`Invalid player id ${playerTag} in file ${filename} for event ${eventId}! Not inserting entry, event will not be set up correctly.`)
+        }
+    }
+    
+    const uploadTable = logRows.map((logRow) => {
         return {
             ...logRow,
             playerId,

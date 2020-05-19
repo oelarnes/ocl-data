@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import { Database } from 'sqlite3'
 import ini from 'ini'
 
-import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, closeEntries } from './googleapi'
+import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, closeEntries, writeEventId, writeSeatingsToSheet } from './googleapi'
 import * as sql from './sqlTemplates'
 import { MongoClient } from 'mongodb'
 
@@ -139,21 +139,38 @@ async function initializeDb() {
 
     const eventSheets = dbConfig.eventSheets
 
-    for (const sheetId of Object.values(eventSheets)) {
-        await updateEventData(sheetId)
+    for (const eventId of Object.keys(eventSheets)) {
+        await updateEventData(eventId, eventSheets[eventId])
     }
 
     return
 }
 
-async function updateEventData(sheetId) {
+async function updateEventData(eventId, sheetId) {
+    await writeEventId(sheetId, eventId)
     const db = getDb()
-    let eventId
+
+    // look for basic seatings. If no account assigned, then seatings originated from a draftlog and should be written to sheets.
+    const seatings = await executeSelectSome(`SELECT playerId, seatNum FROM entry WHERE eventId=$eventId AND account IS NULL ORDER BY seatNum ASC`, {$eventId: eventId})
+    if (seatings.length === 8) {
+        let invalidateSeatings = false
+        let insertPlayerIds = []
+        seatings.forEach((row, index) => {
+            if (!invalidateSeatings && row.seatNum == index + 1) {
+                insertPlayerIds.push([row.playerId])
+            } else {
+                invalidateSeatings = true
+            }
+        })
+        if (!invalidateSeatings) {
+            await writeSeatingsToSheet(sheetId, insertPlayerIds)
+        } else {
+            console.log(`Invalid seatings found for event ${eventId}! Reading sheet without updating seats.`)
+        }
+    }
+
     for (const tableName of ['event', 'entry', 'pairing']) {
         await getDataTable(tableName, sheetId).then(async (values) => {
-            if (tableName === 'event') {
-                eventId = values[1][0].trim()
-            }
             const statements = replaceStatements(tableName)(values)
             for (const statement of statements) {
                 await new Promise((resolve, reject) => {
