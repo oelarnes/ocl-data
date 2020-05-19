@@ -7,13 +7,19 @@ import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, close
 import * as sql from './sqlTemplates'
 import { MongoClient } from 'mongodb'
 
-const dbConfig = ini.parse(readFileSync('./data/env.ini', 'utf-8'))
+let dbConfig;
+try {
+    dbConfig = ini.parse(readFileSync('./config/ocl.ini', 'utf-8'))
+} catch (err) {
+    console.log('No OCL config file found, OCL data will not work!')
+}
+
 function getDb() {
     return new Database(dbConfig.sqlite[process.env.OCL_ENV || 'test'])
 }
 
 function getFreshDbConfig() {
-    return ini.parse(readFileSync('./data/env.ini', 'utf-8'))
+    return ini.parse(readFileSync('./config/ocl.ini', 'utf-8'))
 }
 
 function oclMongo() {

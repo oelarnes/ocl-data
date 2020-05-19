@@ -136,10 +136,15 @@ async function dataSync() {
 }
 
 async function dataSyncLoop(cadence = 1000 * 60 * 5) {
-    await dataSync()
+    try {
+        await dataSync()
 
-    console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + cadence))
-    setTimeout(dataSyncLoop, cadence)
+        console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + cadence))
+        setTimeout(dataSyncLoop, cadence)
+    } catch (err) {
+        console.log('Some error, terminating OCL data sync loop. Probably your config file is missing or incorrectly set up.')
+    }
+    
     return
 }
 
@@ -386,27 +391,6 @@ function processDeck(decklist) {
         playerFullName
     }
 }
-async function writeDraftStats(draftStats) {
-    const handleIdMap = await executeSelectSome(`SELECT * FROM player`).then(rows => rows.reduce((prev, cur) => {
-        prev[cur.discordHandle] = cur.id
-        return prev
-    }, {}))
-
-    for (const handle of Object.keys(draftStats.draft)) {
-        if (handleIdMap[handle] !== undefined) {
-            await executeInsertData('pick', draftStats.draft[handle].map((pick, index) => ({
-                playerId: handleIdMap[handle],
-                eventId: draftStats.title,
-                cardName: pick.picked,
-                otherCardNamesString: pick.notPicked.join('\n'),
-                pickId: index + 1,
-                packNum: Math.floor(index / 15) + 1,
-                pickNum: index % 15 + 1
-            })));
-        }
-    }
-    return true
-}
 
 export {
     processAllEventFiles,
@@ -415,6 +399,5 @@ export {
     fileIsDecklist,
     fileIsDraftLog,
     dataSyncLoop,
-    dataSync,
-    writeDraftStats
+    dataSync
 }
