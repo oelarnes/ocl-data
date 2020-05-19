@@ -200,8 +200,8 @@ async function updateEventData(eventId, sheetId) {
     const eventCompletedDate = await executeSelectOne(`SELECT completedDate FROM event WHERE id = $eventId`, { $eventId: eventId }, 'completedDate')
 
     if (eventCompletedDate > todayString && !newCompletedDates.filter(date => date > todayString).length) {
-        writeEventCompletedDate(sheetId)
-        closeEntries(sheetId)
+        await writeEventCompletedDate(sheetId)
+        await closeEntries(sheetId)
     }
 
     return
