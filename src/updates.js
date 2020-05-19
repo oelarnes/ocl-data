@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, promises as fsPromises } from 'fs'
+import { existsSync, readFileSync, readdirSync, promises as fsPromises } from 'fs'
 import path from 'path'
 
 import { parseStringPromise } from 'xml2js'
@@ -158,6 +158,12 @@ function fileIsDraftLog(filename) {
 
 async function processAllEventFiles() {
     const allEventIds = await executeSelectSome('SELECT id FROM event', {}, 'id')
+    const events_path = path.join(DATA_FOLDER, 'events')
+
+    if (!existsSync(events_path)) {
+        await fsPromises.mkdir(events_path)
+    }
+
     const allFolders = readdirSync(
         path.join(DATA_FOLDER, 'events')
     ).filter(item => allEventIds.includes(item))
