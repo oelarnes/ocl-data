@@ -176,7 +176,7 @@ function fileIsDraftLog(filename) {
 
 async function processAllEventFiles() {
     const allEventIdsInDb = await executeSelectSome('SELECT id FROM event', {}, 'id')
-    const allEventIds = [...Set(allEventIdsInDb.concat(Object.keys(getFreshDbConfig().eventSheets)))]
+    const allEventIds = [...new Set(allEventIdsInDb.concat(Object.keys(getFreshDbConfig().eventSheets)))]
     
     const allFolders = readdirSync(
         path.join(DATA_FOLDER, 'events')
