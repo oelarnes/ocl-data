@@ -137,9 +137,9 @@ async function dataSync() {
     for (const eventId of openEvents.concat(newEvents)) {
         const sheetId = dbConfig.eventSheets[eventId]
         if (sheetId === undefined) {
-            throw `No event sheet for open event ${event}`
+            throw `No event sheet for open event ${eventId}`
         }
-        console.log('Updating data for open event %s', event)
+        console.log('Updating data for open event %s', eventId)
         await updateEventData(eventId, sheetId)
     }
     
