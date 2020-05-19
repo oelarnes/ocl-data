@@ -118,6 +118,7 @@ async function dataSync() {
 
     const dbConfig = getFreshDbConfig()
 
+    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
     // first make sure there are event folders for every event in the config
     const newEvents = Object.keys(dbConfig.eventSheets).filter(eventId => !knownEventIds.includes(eventId))
     for (const eventId of newEvents) {
@@ -129,9 +130,8 @@ async function dataSync() {
 
     // process logs, since we use them to push to seatings
     await processAllEventFiles()
-
     //then update events
-    const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
+    
     const openEvents = await executeSelectSome(`SELECT id FROM event WHERE completedDate > $today`, { $today: new Date().toISOString() }, 'id')
 
     for (const eventId of openEvents.concat(newEvents)) {
@@ -215,6 +215,7 @@ async function processOneEvent(eventId) {
         const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC AND playerId IS NOT NULL', { $eventId: eventId }, 'playerId')
 
         if(seatings.length != 8) {
+            console.length(`Invalid seatings found for event ${eventId}. Deleting entries.`)
             await executeRun(`DELETE FROM entry WHERE eventId = $eventId`, {$eventId: eventId})
         }
 
