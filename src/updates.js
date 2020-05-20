@@ -212,7 +212,7 @@ async function processOneEvent(eventId) {
         console.log(`Found new log file ${newLogFiles[0]} and ${newLogFiles.length - 1} others in event ${eventId}. Reprocessing picks now...`)
 
         await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId })
-        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId ORDER BY seatNum ASC AND playerId IS NOT NULL', { $eventId: eventId }, 'playerId')
+        const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId AND playerId IS NOT NULL ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId')
 
         if(seatings.length != 8) {
             console.length(`Invalid seatings found for event ${eventId}. Deleting entries.`)
