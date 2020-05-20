@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync, mkdirSync } from 'fs'
 
 import { Database } from 'sqlite3'
 import ini from 'ini'
@@ -86,6 +86,9 @@ function replaceStatements(tableName) {
 }
 
 async function initializeDb() {
+    if (!existsSync('db')) {
+        mkdirSync('db')
+    }
     const db = getDb()
     const dbConfig = getFreshDbConfig()
 

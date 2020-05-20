@@ -103,8 +103,9 @@ dist
 # TernJS port file
 .tern-port
 
-# sqlite data store
+# data store
 data
+db
 
 #google api authentication
 google-auth

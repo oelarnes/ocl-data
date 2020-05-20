@@ -184,7 +184,7 @@ async function processAllEventFiles() {
 
     allEventIds.filter(item => !allFolders.includes(item)).forEach(async item => {
         console.log('Creating event folder for %s', item)
-        await fsPromises.mkdir(`./data/events/${item}`)
+        await fsPromises.mkdir(`./ocl-data/events/${item}`)
     })
 
     for (const eventId of allFolders) {
@@ -215,7 +215,9 @@ async function processOneEvent(eventId) {
         const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId AND playerId IS NOT NULL ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId')
 
         if(seatings.length != 8) {
-            console.length(`Invalid seatings found for event ${eventId}. Deleting entries.`)
+            if(seatings.length > 0) {
+                console.length(`Invalid seatings found for event ${eventId}. Deleting entries.`)
+            }
             await executeRun(`DELETE FROM entry WHERE eventId = $eventId`, {$eventId: eventId})
         }
 
