@@ -250,7 +250,7 @@ async function loadLogAndWrite(filename, eventId, seatings) {
         playerId = playerTag
         const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName')
         if (fullName !== undefined) {
-            await executeInsertData(`INSERT INTO entry(eventId, playerId, seatNum) VALUES ($eventId, $playerId, $seatNum)`, {$eventId: eventId, $playerId: playerId, $seatNum: seatNum})
+            await executeRun(`INSERT INTO entry(eventId, playerId, seatNum) VALUES ($eventId, $playerId, $seatNum)`, {$eventId: eventId, $playerId: playerId, $seatNum: seatNum})
             console.log(`Inserting seating for ${fullName} at seat ${seatNum} in event ${eventId}`)
         } else {
             console.log(`Invalid player id ${playerTag} in file ${filename} for event ${eventId}! Not inserting entry, event will not be set up correctly.`)
