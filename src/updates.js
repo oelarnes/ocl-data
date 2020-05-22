@@ -44,7 +44,6 @@ async function importDekFiles() {
         }, {})
 
         const insertRowsTemp = await extendMtgoRows(rowMap)
-        const asOf = await scryfallAsOf()
 
         const missingCards = Object.keys(rowMap).filter(
             v => !insertRowsTemp.map(row => row.id.toString()).includes(v)
@@ -72,42 +71,27 @@ async function importDekFiles() {
             })))
         } else {
             console.log('Insufficient matching card data found, mtgoCard not updated')
+            console.log(missingCards)
         }
     }
     return
-}
-
-async function scryfallAsOf() {
-    const mongo = await oclMongo()
-    
-    return mongo.collection('import_metadata').findOne({}).then(item => item?.as_of).catch(err => {
-        console.log(err)
-        return
-    })
-}
-
-function scryfallCardName(sfRow) {
-    const useFrontFaceName = ['transform', 'flip', 'adventure']
-    if (useFrontFaceName.includes(sfRow.layout)) {
-        return sfRow.card_faces[0].name
-    }
-    return sfRow.name
 }
 
 async function extendMtgoRows(rowMap) {
     const mtgoIds = Object.keys(rowMap).map(key => parseInt(key))
     const mongo = await oclMongo()
 
-    const rows = await mongo.collection('cards_en').find(
-        { mtgo_id: { $in: mtgoIds } }
+    const rows = await mongo.collection('all_cards').find(
+        { mtgoid: { $in: mtgoIds } },
+        { side: {$ne: 'b'}}
     ).toArray()
 
-    return rows.map(row => {
+    return rows.reduce(row => {
         const baseRow = rowMap[row.mtgo_id.toString()]
         return {
             ...baseRow,
-            name: scryfallCardName(row),
-            tix: row.prices.tix,
+            name: row.layout === 'split' ? row.names.join(' // ') : row.name,
+            tix: Object.values(row.prices.mtgo)?.[0],
             isFoil: false
         }
     })
