@@ -94,7 +94,7 @@ const resolvers = {
         cubeByType(_, { cubeType }) {
             return executeSelectOne(sql.selectCubesByType, { $cubeType: cubeType })
         },
-        async ownedDekString(_parent, { mainCardNames, sideboardCardNames }) {
+        async ownedDekString(_parent, { mainCardNames=[], sideboardCardNames=[] }) {
             const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
             const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({name})))
             
