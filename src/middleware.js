@@ -98,8 +98,10 @@ const resolvers = {
             const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
             const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({name})))
             
-            return dekStringFromRows(mainCards.map(card => resolvers.MTGOCard.dekRow(card)).concat(sideboardCards.map(
-                card => resolvers.MTGOCard.dekRow(card, {sideboard: true})
+            return dekStringFromRows(mainCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {num:1, sideboard: false})
+            ).concat(sideboardCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {num: 1, sideboard: true})
             )))
         }
     },
