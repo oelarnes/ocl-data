@@ -375,8 +375,12 @@ const resolvers = {
         cubesIn(parent, { asOf = new Date().toISOString() }) {
             return executeSelectSome(sql.selectCubesForCard, { $cardName: parent.name, $asOf: asOf })
         },
-        ownedMTGOCard(parent) {
-            return executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: parent.name })
+        async ownedMTGOCard(parent) {
+            const ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: parent.name })
+            if (ownedCard === undefined) {
+                return executeSelectOne(sql.selectWishlistCardByName, { $cardName: parent.name })
+            }
+            return ownedCard
         }
     },
     MTGOCard: {
