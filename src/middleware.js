@@ -94,9 +94,28 @@ const resolvers = {
         cubeByType(_, { cubeType }) {
             return executeSelectOne(sql.selectCubesByType, { $cubeType: cubeType })
         },
-        async ownedDekString(_parent, { cardNames }) {
-            const mtgoCards = await Promise.all(cardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
-            return dekStringFromRows(mtgoCards.map(card => resolvers.MTGOCard.dekRow(card)))
+        async ownedDekString(_parent, { mainCardNames=[], sideboardCardNames=[] }) {
+            const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
+            const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({name})))
+            
+            return dekStringFromRows(mainCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {num:1, sideboard: false})
+            ).concat(sideboardCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {num: 1, sideboard: true})
+            )))
+        },
+        async MTGOCards(_parent, {owned=true, wishlist=true}) {
+            let cards = [];
+        
+            if (owned) {
+                const newCards = await executeSelectSome(sql.selectOwnedCards);
+                cards = cards.concat(newCards);
+            }
+            if (wishlist) {
+                const newCards = await executeSelectSome(sql.selectWishlistCards);
+                cards = cards.concat(newCards);
+            }
+            return cards;
         }
     },
     Mutation: {
@@ -297,10 +316,10 @@ const resolvers = {
             const sbMTGOCards = await Promise.all(resolvers.Deck.sideboard(parent).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
 
             const mainRows = mainMTGOCards.map(
-                card => resolvers.MTGOCard.dekRow(card, { sideboard: false })
+                card => resolvers.MTGOCard.dekRow(card, { num: 1, sideboard: false })
             )
             const sbRows = sbMTGOCards.map(
-                card => resolvers.MTGOCard.dekRow(card, { sideboard: true })
+                card => resolvers.MTGOCard.dekRow(card, { num: 1, sideboard: true })
             )
             const dekRows = mainRows.concat(sbRows)
             return dekStringFromRows(dekRows)
@@ -369,8 +388,12 @@ const resolvers = {
         cubesIn(parent, { asOf = new Date().toISOString() }) {
             return executeSelectSome(sql.selectCubesForCard, { $cardName: parent.name, $asOf: asOf })
         },
-        ownedMTGOCard(parent) {
-            return executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: parent.name })
+        async ownedMTGOCard(parent) {
+            const ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: parent.name })
+            if (ownedCard === undefined) {
+                return executeSelectOne(sql.selectWishlistCardByName, { $cardName: parent.name })
+            }
+            return ownedCard
         }
     },
     MTGOCard: {
