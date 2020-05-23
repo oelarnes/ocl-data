@@ -176,6 +176,7 @@ type Query {
     card(name: String): Card
     cubeByType(cubeType: CubeType): Cube
     ownedDekString(mainCardNames: [String], sideboardCardNames: [String]): String
+    MTGOCards(wishlist: Boolean, owned: Boolean): [MTGOCard]
 }
 
 type Mutation {

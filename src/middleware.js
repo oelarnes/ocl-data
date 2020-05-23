@@ -103,6 +103,19 @@ const resolvers = {
             ).concat(sideboardCards.map(
                 card => resolvers.MTGOCard.dekRow(card, {num: 1, sideboard: true})
             )))
+        },
+        async MTGOCards(_parent, {owned=true, wishlist=true}) {
+            let cards = [];
+        
+            if (owned) {
+                const newCards = await executeSelectSome(selectOwnedCards);
+                cards = cards.concat(newCards);
+            }
+            if (wishlist) {
+                const newCards = await executeSelectSome(selectWishlistCards);
+                cards = cards.concat(newCards);
+            }
+            return cards;
         }
     },
     Mutation: {
