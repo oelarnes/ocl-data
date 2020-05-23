@@ -108,11 +108,11 @@ const resolvers = {
             let cards = [];
         
             if (owned) {
-                const newCards = await executeSelectSome(selectOwnedCards);
+                const newCards = await executeSelectSome(sql.selectOwnedCards);
                 cards = cards.concat(newCards);
             }
             if (wishlist) {
-                const newCards = await executeSelectSome(selectWishlistCards);
+                const newCards = await executeSelectSome(sql.selectWishlistCards);
                 cards = cards.concat(newCards);
             }
             return cards;

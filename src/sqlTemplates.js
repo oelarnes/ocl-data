@@ -268,7 +268,7 @@ export const selectMatchLossesByCard = `SELECT SUM(losses) as losses FROM (
 export const selectOwnedMTGOCardByName = `SELECT * FROM mtgoCard WHERE name = $cardName and numOwned > 0`
 export const selectWishlistCardByName = `SELECT * FROM mtgoCard WHERE name = $cardName and numWishlist > 0`
 export const selectOwnedCards = `SELECT * FROM mtgoCard WHERE numOwned > 0`
-export const selectWishlistCards = `SELECT * FROM mtgoCards WHERE numWishlist > 0`
+export const selectWishlistCards = `SELECT * FROM mtgoCard WHERE numWishlist > 0`
 export const selectCubesForCard = `SELECT * FROM cube
     WHERE listString LIKE '%\n' || $cardName || '\n%'
     AND activeDate <= $asOf AND inactiveDate > $asOf`
