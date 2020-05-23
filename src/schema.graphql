@@ -175,8 +175,8 @@ type Query {
     standings(season: String, howMany: Int, after: Int): [Standing]
     card(name: String): Card
     cubeByType(cubeType: CubeType): Cube
-    ownedDekString(cardNames: [String]): String
-} 
+    ownedDekString(mainCardNames: [String], sideboardCardNames: [String]): String
+}
 
 type Mutation {
     syncData: Boolean

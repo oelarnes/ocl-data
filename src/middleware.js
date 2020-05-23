@@ -94,9 +94,13 @@ const resolvers = {
         cubeByType(_, { cubeType }) {
             return executeSelectOne(sql.selectCubesByType, { $cubeType: cubeType })
         },
-        async ownedDekString(_parent, { cardNames }) {
-            const mtgoCards = await Promise.all(cardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
-            return dekStringFromRows(mtgoCards.map(card => resolvers.MTGOCard.dekRow(card)))
+        async ownedDekString(_parent, { mainCardNames, sideboardCardNames }) {
+            const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
+            const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({name})))
+            
+            return dekStringFromRows(mainCards.map(card => resolvers.MTGOCard.dekRow(card)).concat(sideboardCards.map(
+                card => resolvers.MTGOCard.dekRow(card, {sideboard: true})
+            )))
         }
     },
     Mutation: {
