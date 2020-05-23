@@ -24,11 +24,11 @@ enum OCLAccount {
 
 type Player {
     id: ID!
-    fullName: String
+    # fullName: String
     discordHandle: String
     discordIdExt: String
     timeZone: String
-    email: String
+    # email: String
     eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
     standing(season: String): Standing
     pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]

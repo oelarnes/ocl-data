@@ -65,10 +65,7 @@ async function importDekFiles() {
 
         if (insertRows.length === Object.keys(rowMap).length) {
             await executeRun(`DELETE FROM mtgoCard`)
-            await executeInsertData('mtgoCard', insertRows.map(row => ({
-                ...row,
-                tixAsOf: asOf
-            })))
+            await executeInsertData('mtgoCard', insertRows)
         } else {
             console.log('Insufficient matching card data found, mtgoCard not updated')
             console.log(missingCards)
@@ -82,16 +79,16 @@ async function extendMtgoRows(rowMap) {
     const mongo = await oclMongo()
 
     const rows = await mongo.collection('all_cards').find(
-        { mtgoid: { $in: mtgoIds } },
-        { side: {$ne: 'b'}}
+        { mtgoId: { $in: mtgoIds }, side: { $ne: 'b' } },
     ).toArray()
 
-    return rows.reduce(row => {
-        const baseRow = rowMap[row.mtgo_id.toString()]
+    return rows.map(row => {
+        const baseRow = rowMap[row.mtgoId.toString()]
         return {
             ...baseRow,
-            name: row.layout === 'split' ? row.names.join(' // ') : row.name,
-            tix: Object.values(row.prices.mtgo)?.[0],
+            name: ['split', 'aftermath'].includes(row.layout) ? row.names.join(' // ') : row.name,
+            tix: row.prices?.mtgo !== undefined ? Object.values(row.prices.mtgo)?.[0] : undefined,
+            tixAsOf: row.prices?.mtgo !== undefined ? Object.keys(row.prices.mtgo)?.[0] : undefined,
             isFoil: false
         }
     })
