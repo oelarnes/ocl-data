@@ -301,10 +301,10 @@ const resolvers = {
             const sbMTGOCards = await Promise.all(resolvers.Deck.sideboard(parent).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
 
             const mainRows = mainMTGOCards.map(
-                card => resolvers.MTGOCard.dekRow(card, { sideboard: false })
+                card => resolvers.MTGOCard.dekRow(card, { num: 1, sideboard: false })
             )
             const sbRows = sbMTGOCards.map(
-                card => resolvers.MTGOCard.dekRow(card, { sideboard: true })
+                card => resolvers.MTGOCard.dekRow(card, { num: 1, sideboard: true })
             )
             const dekRows = mainRows.concat(sbRows)
             return dekStringFromRows(dekRows)
