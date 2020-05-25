@@ -181,4 +181,5 @@ type Query {
 
 type Mutation {
     syncData: Boolean
+    addEvent(eventId: String, sheetId: String): Boolean
 }

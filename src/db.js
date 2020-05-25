@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
 
 import { Database } from 'sqlite3'
 import ini from 'ini'
@@ -7,9 +7,11 @@ import { getDataTable, writePairingCompletedDate, writeEventCompletedDate, close
 import * as sql from './sqlTemplates'
 import { MongoClient } from 'mongodb'
 
+const CONFIG_PATH = 'config/ocl.ini'
+
 let dbConfig;
 try {
-    dbConfig = ini.parse(readFileSync('./config/ocl.ini', 'utf-8'))
+    dbConfig = ini.parse(readFileSync(CONFIG_PATH, 'utf-8'))
 } catch (err) {
     console.log('No OCL config file found, OCL data will not work!')
 }
@@ -19,11 +21,54 @@ function getDb() {
 }
 
 function getFreshDbConfig() {
-    return ini.parse(readFileSync('./config/ocl.ini', 'utf-8'))
+    return ini.parse(readFileSync(CONFIG_PATH, 'utf-8'))
+}
+
+function addEventToConfig(eventId, sheetId) {
+    const config = getFreshDbConfig();
+    config.eventSheets[eventId] = sheetId
+    writeFileSync(CONFIG_PATH, ini.encode(config))
+    return true
 }
 
 function oclMongo() {
     return MongoClient.connect('mongodb://localhost:27017', { useUnifiedTopology: true }).then(client => client.db(dbConfig.mongo[process.env.OCL_ENV || 'test']))
+}
+
+async function refreshPlayers() {
+    const db = getDb();
+    await new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run(sql.dropPlayerTable)
+                .run(sql.createPlayerTable, [], (err) => {
+                    if (err) {
+                        reject(err)
+                    } else {
+                        resolve()
+                    }
+                })
+        })
+    }).catch(err => {
+        console.log(err)
+    })
+
+    await getDataTable('player', dbConfig.masterSheet.sheetId).then(async (values) => {
+        const statements = replaceStatements('player')(values)
+        for (const statement of statements) {
+            await new Promise((resolve, reject) => {
+                db.run(statement.query, statement.params, function (err) {
+                    if (err) {
+                        reject(err)
+                    }
+                    resolve()
+                })
+            }).catch(err => {
+                console.log(err)
+            })
+        }
+        return
+    }).catch(console.log);
+    return 
 }
 
 function executeSelectOne(query, args, extractProp) {
@@ -268,6 +313,8 @@ function executeRun(statement, args) {
 export {
     getDb,
     getFreshDbConfig,
+    addEventToConfig,
+    refreshPlayers,
     executeSelectOne,
     executeSelectSome,
     executeInsertData,

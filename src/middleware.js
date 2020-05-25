@@ -3,9 +3,9 @@ import { readFileSync } from "fs"
 import graphqlHTTP from "express-graphql"
 import { makeExecutableSchema } from "graphql-tools"
 
-import { executeSelectOne, executeSelectSome } from "./db"
+import { executeSelectOne, executeSelectSome, addEventToConfig } from "./db"
 import * as sql from "./sqlTemplates"
-import { dataSync } from "./updates"
+import { syncData } from "./updates"
 
 const MAX_RESULTS = 10000
 const MAX_DATE = "9999-12-31"
@@ -120,7 +120,12 @@ const resolvers = {
     },
     Mutation: {
         async syncData(_) {
-            await dataSync()
+            await syncData()
+            return true
+        },
+        async addEvent(_, {eventId, sheetId}) {
+            addEventToConfig(eventId, sheetId);
+            await syncData();
             return true
         }
     },

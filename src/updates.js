@@ -3,8 +3,16 @@ import path from 'path'
 
 import { parseStringPromise } from 'xml2js'
 
-import { executeInsertData, executeSelectSome, executeSelectOne, executeRun, getFreshDbConfig, updateEventData } from './db'
-import { oclMongo } from '../lib/db'
+import { 
+    oclMongo, 
+    refreshPlayers, 
+    executeInsertData, 
+    executeSelectSome, 
+    executeSelectOne, 
+    executeRun, 
+    getFreshDbConfig, 
+    updateEventData 
+} from './db'
 
 const DATA_FOLDER = './data'
 const SELECTION_REGEX = /--> (.*)/
@@ -94,9 +102,10 @@ async function extendMtgoRows(rowMap) {
     })
 }
 
-async function dataSync() {
+async function syncData() {
     console.log('%s Looking for new source files and updating open events...', new Date().toISOString())
 
+    await refreshPlayers();
     const dbConfig = getFreshDbConfig()
 
     const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
@@ -131,7 +140,7 @@ async function dataSync() {
 
 async function dataSyncLoop(cadence = 1000 * 60 * 5) {
     try {
-        await dataSync()
+        await syncData()
 
         console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + cadence))
         setTimeout(dataSyncLoop, cadence)
@@ -407,5 +416,5 @@ export {
     fileIsDecklist,
     fileIsDraftLog,
     dataSyncLoop,
-    dataSync
+    syncData
 }

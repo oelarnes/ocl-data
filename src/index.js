@@ -4,7 +4,7 @@ import express from 'express'
 
 import { oclData } from './middleware'
 import { initializeDb, oclMongo } from './db'
-import { dataSync, dataSyncLoop, writeDraftStats } from './updates'
+import { syncData, dataSyncLoop, writeDraftStats } from './updates'
 
 if (require.main === module) {
     const app = express()
@@ -19,4 +19,4 @@ if (require.main === module) {
     console.log('GraphQL server started on port %s', (server.address()).port)
 }
 
-export { oclData, oclMongo, dataSync, dataSyncLoop, initializeDb, writeDraftStats }
+export { oclData, oclMongo, syncData, dataSyncLoop, initializeDb, writeDraftStats }
