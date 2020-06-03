@@ -5,7 +5,6 @@ import { parseStringPromise } from 'xml2js'
 
 import { 
     oclMongo, 
-    refreshPlayers, 
     executeInsertData, 
     executeSelectSome, 
     executeSelectOne, 
@@ -105,7 +104,6 @@ async function extendMtgoRows(rowMap) {
 async function syncData() {
     console.log('%s Looking for new source files and updating open events...', new Date().toISOString())
 
-    await refreshPlayers();
     const dbConfig = getFreshDbConfig()
 
     const knownEventIds = await executeSelectSome(`SELECT id FROM event`, {}, 'id')
@@ -167,7 +165,7 @@ function fileIsDraftLog(filename) {
 async function processAllEventFiles() {
     const allEventIdsInDb = await executeSelectSome('SELECT id FROM event', {}, 'id')
     const allEventIds = [...new Set(allEventIdsInDb.concat(Object.keys(getFreshDbConfig().eventSheets)))]
-    
+
     const allFolders = readdirSync(
         path.join(DATA_FOLDER, 'events')
     ).filter(item => allEventIds.includes(item))
@@ -187,7 +185,7 @@ async function processAllEventFiles() {
 async function processOneEvent(eventId) {
     const eventPath = path.join(DATA_FOLDER, 'events', eventId)
     const txtFileNames = readdirSync(eventPath).filter(item => /\.txt$/.test(item))
-    
+
     const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
         UNION ALL 
         SELECT decklistSource AS source FROM pick WHERE eventId = $eventId`,
@@ -206,7 +204,7 @@ async function processOneEvent(eventId) {
 
         if(seatings.length != 8) {
             if(seatings.length > 0) {
-                console.length(`Invalid seatings found for event ${eventId}. Deleting entries.`)
+                console.log(`Invalid seatings found for event ${eventId}. Deleting entries.`)
             }
             await executeRun(`DELETE FROM entry WHERE eventId = $eventId`, {$eventId: eventId})
         }
@@ -329,18 +327,20 @@ async function loadDeckAndWrite(filename, eventId) {
 
 function processLog(draftLog) {
     const selectionRegex = /--> (.*)/
+    const playerRegex = /Player ID: (.*)/
     draftLog = draftLog.replace(/\r/g, '')
     const segments = draftLog.split('\n\n').filter((segment) => selectionRegex.test(segment))
 
     if (segments.length !== 46) {
         throw 'Invalid draftlog, missing correct number of "-->" indicators or improperly separated.'
     }
-    const playerLines = segments[0].split('\n').filter(line => /[a-zA-z]/.test(line)).slice(3, 11)
+    const playerLines = segments[0].split('\n').filter(line => /(^--> |^    )[a-zA-z]/.test(line))
     if (playerLines.length != 8) {
         throw 'Invalid draftlog, header does not have 8 players, or some other error.'
     }
     const seatNum = playerLines.findIndex(line => selectionRegex.test(line)) + 1
-    const playerTag = playerLines.find(line => selectionRegex.test(line)).match(selectionRegex)[1]
+    const playerTag = draftLog.split('\n').find(line => playerRegex.test(line))?.match(playerRegex)?.[1] ||
+        playerLines.find(line => selectionRegex.test(line)).match(selectionRegex)[1]
 
     const pickSegments = segments.slice(1, 46)
 

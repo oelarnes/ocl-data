@@ -13,8 +13,7 @@ CREATE TABLE IF NOT EXISTS player(
     discordHandle TEXT,
     discordIdExt TEXT,
     timeZone TEXT,
-    pronouns TEXT,
-    email TEXT
+    pronouns TEXT
 );`;
 export const createEventTable = `
 CREATE TABLE IF NOT EXISTS event(

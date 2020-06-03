@@ -28,11 +28,9 @@ type Player {
     discordHandle: String
     discordIdExt: String
     timeZone: String
-    # email: String
     eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
     standing(season: String): Standing
-    pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]
-    # favoriteCards(howMany: Int, after: String): [Card]
+    pairingsVs(oppId: String!, howMany: Int, after: String, asc: Boolean): [Pairing]    
     openPairings: [Pairing]
     openEntries: [Entry]
 }

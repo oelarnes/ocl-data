@@ -35,42 +35,6 @@ function oclMongo() {
     return MongoClient.connect('mongodb://localhost:27017', { useUnifiedTopology: true }).then(client => client.db(dbConfig.mongo[process.env.OCL_ENV || 'test']))
 }
 
-async function refreshPlayers() {
-    const db = getDb();
-    await new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.run(sql.dropPlayerTable)
-                .run(sql.createPlayerTable, [], (err) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve()
-                    }
-                })
-        })
-    }).catch(err => {
-        console.log(err)
-    })
-
-    await getDataTable('player', dbConfig.masterSheet.sheetId).then(async (values) => {
-        const statements = replaceStatements('player')(values)
-        for (const statement of statements) {
-            await new Promise((resolve, reject) => {
-                db.run(statement.query, statement.params, function (err) {
-                    if (err) {
-                        reject(err)
-                    }
-                    resolve()
-                })
-            }).catch(err => {
-                console.log(err)
-            })
-        }
-        return
-    }).catch(console.log);
-    return 
-}
-
 function executeSelectOne(query, args, extractProp) {
     const db = getDb()
 
@@ -164,7 +128,7 @@ async function initializeDb() {
         console.log(err)
     })
 
-    for (const tableName of ['player', 'event', 'entry', 'pairing', 'cube']) {
+    for (const tableName of ['event', 'entry', 'pairing', 'cube']) {
         await getDataTable(tableName, dbConfig.masterSheet.sheetId).then((values) => {
             return Promise.all(
                 replaceStatements(tableName)(values).map(statement => {
@@ -217,7 +181,7 @@ async function updateEventData(eventId, sheetId) {
         }
     }
 
-    for (const tableName of ['event', 'entry', 'pairing']) {
+    for (const tableName of ['player', 'event', 'entry', 'pairing']) {
         await getDataTable(tableName, sheetId).then(async (values) => {
             const statements = replaceStatements(tableName)(values)
             for (const statement of statements) {
@@ -314,7 +278,6 @@ export {
     getDb,
     getFreshDbConfig,
     addEventToConfig,
-    refreshPlayers,
     executeSelectOne,
     executeSelectSome,
     executeInsertData,
