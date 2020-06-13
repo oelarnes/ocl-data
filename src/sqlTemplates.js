@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS event(
     draftDate TEXT,
     completedDate TEXT, 
     cubeId TEXT, 
-    season TEXT
+    season TEXT,
+    standingsJpgURL TEXT
 );`;
 export const createEntryTable = ` 
 CREATE TABLE IF NOT EXISTS entry(
@@ -203,8 +204,9 @@ export const selectStandingsBySeason = `SELECT * FROM (
             ON entries.playerId = p1.playerId
     ) ats
     ON ats.playerId = p1.playerId
-) t  WHERE rank > $after LIMIT $howMany`;
-
+) t  WHERE rank > $after LIMIT $howMany`
+export const selectStandingsWithDiscordHandle = `SELECT rank, discordHandle, qps, matchWins, matchLosses, allTimeRank FROM
+    (${selectStandingsBySeason}) standings INNER JOIN player ON standings.playerId = player.id ORDER BY rank ASC`
 export const selectStandingForPlayerAllTime = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank 
     FROM (${selectStandingsAllTime}) s WHERE playerId = $playerId`;
 export const selectStandingForPlayerBySeason = `SELECT playerId, season, rank, qps, matchWins, matchLosses, trophies, allTimeRank

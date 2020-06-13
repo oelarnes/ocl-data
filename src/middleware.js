@@ -3,9 +3,10 @@ import { readFileSync } from "fs"
 import graphqlHTTP from "express-graphql"
 import { makeExecutableSchema } from "graphql-tools"
 
-import { executeSelectOne, executeSelectSome, addEventToConfig } from "./db"
+import { executeSelectOne, executeSelectSome, addEventToConfig, getFreshDbConfig, executeInsertData, executeRun } from "./db"
 import * as sql from "./sqlTemplates"
 import { syncData } from "./updates"
+import axios from 'axios'
 
 const MAX_RESULTS = 10000
 const MAX_DATE = "9999-12-31"
@@ -193,6 +194,99 @@ const resolvers = {
         },
         winningEntry(parent) {
             return executeSelectOne(sql.selectEventWinner, { $eventId: parent.id })
+        },
+        async standingsJpgURL(parent) {
+            if (parent.standingsJpgURL != null) {
+                return parent.standingsJpgURL
+            }
+            
+            const today = new Date().toISOString()
+
+            const config = getFreshDbConfig().htciapi
+            const latestEventId = await executeSelectOne(`SELECT id FROM event WHERE completedDate < $today ORDER BY completedDate DESC`, {$today: today}, 'id')
+
+            if (latestEventId !== parent.id || config == undefined) {
+                return null
+            }
+        
+            const standings = await executeSelectSome(sql.selectStandingsWithDiscordHandle, {$howMany: MAX_RESULTS, $season: parent.season, $howMany: MAX_RESULTS, $after: 0})
+            
+            const css = `table {
+background-color: rgb(50, 53, 59);
+color: gray;
+}
+
+th, td {
+    padding: 0px 10px;
+    text-align: left;   
+}
+
+tr:nth-child(1) {
+color: lightgray;
+}
+
+tr:nth-child(2) {
+color: #ff50d9;
+}
+
+tr:nth-child(3),
+tr:nth-child(4),
+tr:nth-child(5),
+tr:nth-child(6),
+tr:nth-child(7),
+tr:nth-child(8),
+tr:nth-child(9)
+{
+color: rgb(215,193,171);
+}
+
+tr:nth-child(even) {
+background-color: rgb(64,68,75);
+}`
+            const rowsHtml = standings.reduce((html, row) => html.concat(`<tr>
+        <td>${row.rank}</td>
+        <td>${row.discordHandle}</td>
+        <td>${row.qps}</td>
+        <td>${row.matchWins}</td>
+        <td>${row.matchLosses}</td>
+        <td>${row.allTimeRank}</td>
+    </tr>
+`), '')
+
+            const html = `
+<table>
+    <tr>
+        <th></th>
+        <th>Player</th>
+        <th>QPs</th>
+        <th>Wins</th>
+        <th>Losses</th>
+        <th>All-Time Rank</th>
+    </tr>
+    ${rowsHtml}
+</table>
+`           
+            const token = Buffer.from(`${config.user}:${config.key}`, 'utf8').toString('base64')
+            const {data} = await axios.post(
+                'https://hcti.io/v1/image', 
+                {
+                    html,
+                    css,
+                    google_fonts: "Roboto"
+                },
+                {
+                    headers: {
+                        'Authorization': `Basic ${token}`
+                    }    
+                }
+            )
+
+            if (data?.url !== undefined) {
+                await executeRun(`UPDATE event SET standingsJpgURL = $standingsJpgURL WHERE id = $eventId`, {$eventId: parent.id, $standingsJpgURL: data.url})
+
+                return data.url
+            }
+            return null
         }
     },
     Entry: {
