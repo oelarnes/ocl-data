@@ -356,7 +356,6 @@ background-color: rgb(64,68,75);
                         if (err) {
                             reject(err)
                         }
-                        console.log(res.headers)
                         const logURL = `https://magicprotools.com${res.headers.location}`
                         resolve(logURL)
                     })
