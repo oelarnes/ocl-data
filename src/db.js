@@ -79,21 +79,6 @@ function executeSelectSome(query, args, extractProp) {
     })
 }
 
-function replaceStatements(tableName) {
-    return function (values) {
-        const keys = values[0]
-        return values.slice(1).map(row => ({
-            query: `
-            REPLACE INTO 
-                ${tableName}(${keys.join(', ')})
-            VALUES  
-                (${new Array(row.length).fill('?').join(", ")}); 
-            `,
-            params: row.map(val => val === '' ? null : val.replace(/\r/g, ''))
-        }))
-    }
-}
-
 async function initializeDb() {
     if (!existsSync('db')) {
         mkdirSync('db')
@@ -104,13 +89,17 @@ async function initializeDb() {
     await new Promise((resolve, reject) => {
         db.serialize(() => {
             db.run(sql.dropEventTable)
+                .run(sql.dropEventExtraTable)
                 .run(sql.dropPlayerTable)
                 .run(sql.dropEntryTable)
+                .run(sql.dropEntryExtraTable)
                 .run(sql.dropPairingTable)
                 .run(sql.dropCubeTable)
                 .run(sql.dropPickTable)
                 .run(sql.dropMTGOCardTable)
                 .run(sql.createEventTable)
+                .run(sql.createEventExtraTable)
+                .run(sql.createEntryExtraTable)
                 .run(sql.createPlayerTable)
                 .run(sql.createPairingTable)
                 .run(sql.createCubeTable)
@@ -127,27 +116,13 @@ async function initializeDb() {
     }).catch(err => {
         console.log(err)
     })
+    db.close()
 
     for (const tableName of ['event', 'entry', 'pairing', 'cube']) {
-        await getDataTable(tableName, dbConfig.masterSheet.sheetId).then((values) => {
-            return Promise.all(
-                replaceStatements(tableName)(values).map(statement => {
-                    return new Promise((resolve, reject) => {
-                        db.run(statement.query, statement.params, function (err) {
-                            if (err) {
-                                reject(err)
-                            }
-                            resolve()
-                        })
-                    }).catch(err => {
-                        console.log(err)
-                    })
-                })
-            )
-        });
+        await getDataTable(tableName, dbConfig.masterSheet.sheetId).then(async (dataTable) => {
+            return executeInsertData(tableName, dataTable)
+        })
     }
-
-    db.close()
 
     const eventSheets = dbConfig.eventSheets
 
@@ -160,7 +135,6 @@ async function initializeDb() {
 
 async function updateEventData(eventId, sheetId) {
     await writeEventId(sheetId, eventId)
-    const db = getDb()
 
     // look for basic seatings. If no account assigned, then seatings originated from a draftlog and should be written to sheets.
     const seatings = await executeSelectSome(`SELECT playerId, seatNum FROM entry WHERE eventId=$eventId AND account IS NULL ORDER BY seatNum ASC`, {$eventId: eventId})
@@ -182,24 +156,10 @@ async function updateEventData(eventId, sheetId) {
     }
 
     for (const tableName of ['player', 'event', 'entry', 'pairing']) {
-        await getDataTable(tableName, sheetId).then(async (values) => {
-            const statements = replaceStatements(tableName)(values)
-            for (const statement of statements) {
-                await new Promise((resolve, reject) => {
-                    db.run(statement.query, statement.params, function (err) {
-                        if (err) {
-                            reject(err)
-                        }
-                        resolve()
-                    })
-                }).catch(err => {
-                    console.log(err)
-                })
-            }
+        await getDataTable(tableName, sheetId).then(async (dataTable) => {
+            return executeInsertData(tableName, dataTable)
         })
     }
-    db.close()
-
 
     const todayString = new Date().toISOString()
     // check pairings
@@ -235,26 +195,32 @@ function insertStatement(tableName, dataRow) {
     }
 }
 
-function executeInsertData(tableName, dataTable) {
-    const db = getDb()
+async function executeInsertData(tableName, dataTable) {
+    const pks = await executeSelectSome(`SELECT name FROM pragma_table_info($tableName) WHERE pk > 0`, {$tableName: tableName}, 'name')
+    const extraTables = {
+        event: 'eventExtra',
+        entry: 'entryExtra'
+    }
+    const extraTable = extraTables[tableName]
 
-    return Promise.all(dataTable.map((row) => {
-        const { query, args } = insertStatement(tableName, row)
-        return new Promise((resolve, reject) => {
-            db.run(query, args, function(err) {
-                if (err) {
-                    reject(err)
+    for (const row of dataTable) {
+        if (pks.filter(pk => row[pk] === null || row[pk] === '').length == 0) {
+            const { query, args } = insertStatement(tableName, row)
+            if (extraTable === 'eventExtra') {
+                const hasRow = await executeSelectOne(`SELECT 1 FROM eventExtra WHERE id = $eventId`, {$eventId: row.id})
+                if (hasRow === undefined) {
+                    await executeRun('REPLACE INTO eventExtra(id) VALUES ($eventId)', {$eventId: row.id})
                 }
-                resolve(this.lastID)
-            })
-        })
-    })).then((ids) => {
-        db.close()
-        return ids.length
-    }).catch((err) => {
-        console.log(err)
-        db.close()
-    })
+            } else if (extraTable === 'entryExtra') {
+                const hasRow = await executeSelectOne(`SELECT 1 FROM entryExtra WHERE eventId = $eventId AND playerId = $playerId`, {$eventId: row.eventId, $playerId: row.playerId})
+                if (hasRow === undefined) {
+                    await executeRun('REPLACE INTO entryExtra(eventId, playerId) VALUES ($eventId, $playerId)', {$eventId: row.eventId, $playerId: row.playerId})
+                }
+            }
+    
+            await executeRun(query, args)
+        }
+    }
 }
 
 function executeRun(statement, args) {

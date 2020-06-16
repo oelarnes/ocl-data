@@ -26,7 +26,7 @@ function authorize(credentials, callback) {
     if (err) return getNewToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
     // limit 100 requests per 100 seconds per user on google API
-    setTimeout(() => callback(oAuth2Client), 1001)
+    setTimeout(() => callback(oAuth2Client), 1501)
   });
 }
 
@@ -68,6 +68,7 @@ function getNewToken(oAuth2Client, callback) {
  */
 function fetchTableAndResolve(resolve, reject, tableName, spreadsheetId) {
   return function getDataTable(auth) {
+    console.log(`${new Date().toISOString()} get@Google API`)
     const sheets = google.sheets({ version: 'v4', auth });
     sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -77,7 +78,13 @@ function fetchTableAndResolve(resolve, reject, tableName, spreadsheetId) {
         reject(err)
       }
       else {
-        resolve(res.data.values);
+        const header = res.data.values[0]
+        const rows = res.data.values.slice(1).map(rowValues => rowValues.reduce((row, value, index) => {
+          row[header[index]] = value
+          return row
+        }, {}))
+
+        resolve(rows)
       }
     });
   }
@@ -97,6 +104,7 @@ export function getDataTable(tableName, spreadsheetId) {
 
 export async function writePairingCompletedDate(spreadsheetId, values) {
   function writeFn(auth) {
+    console.log(`${new Date().toISOString()} update@Google API`)
     const sheets = google.sheets({ version: 'v4', auth });
     return sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -119,6 +127,7 @@ export async function writePairingCompletedDate(spreadsheetId, values) {
 
 export async function writeEventCompletedDate(spreadsheetId) {
   function writeFn(auth) {
+    console.log(`${new Date().toISOString()} update@Google API`)
     const sheets = google.sheets({ version: 'v4', auth });
     return sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -143,6 +152,7 @@ export async function writeEventCompletedDate(spreadsheetId) {
 export async function writeEventId(spreadsheetId, eventId) {
   function writeFn(auth) {
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`${new Date().toISOString()} update@Google API`)
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `Bracket!A1:A1`,
@@ -164,6 +174,7 @@ export async function writeEventId(spreadsheetId, eventId) {
 export async function writeSeatingsToSheet(spreadsheetId, playerIds) {
   function writeFn(auth) {
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`${new Date().toISOString()} update@Google API`)
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `entry!B2:B9`,
@@ -185,6 +196,7 @@ export async function writeSeatingsToSheet(spreadsheetId, playerIds) {
 export async function closeEntries(spreadsheetId) {
   function writeFn(auth) {
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`${new Date().toISOString()} update@Google API`)
     return sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `entry!E2:E9`,

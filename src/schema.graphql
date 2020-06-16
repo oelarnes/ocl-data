@@ -26,7 +26,6 @@ type Player {
     id: ID!
     # fullName: String
     discordHandle: String
-    discordIdExt: String
     timeZone: String
     eventEntries(howMany: Int, after: String, asc: Boolean): [Entry]
     standing(season: String): Standing
@@ -70,9 +69,13 @@ type Entry {
     account: OCLAccount
     isOpen: Boolean
     pairings: [Pairing]
-    deck: Deck
     matchWins: Int
     matchLosses: Int
+    pool: [Pick]
+    main: [Pick]
+    sideboard: [Pick]
+    ownedDekString: String
+    draftlogURL: String
 }
 type Pairing {
     eventId: ID!
@@ -115,12 +118,6 @@ type Pick {
     isMain: Int
     poolAsOfNames: [String]
     poolAsOf: [Card]
-}
-type Deck {
-    pool: [Pick]
-    main: [Pick]
-    sideboard: [Pick]
-    ownedDekString: String
 }
 type MTGOCard {
     id: Int!

@@ -145,7 +145,7 @@ async function dataSyncLoop(cadence = 1000 * 60 * 5) {
     } catch (err) {
         console.log('Some error, terminating OCL data sync loop. Probably your config file is missing or incorrectly set up.')
     }
-    
+
     return
 }
 
@@ -186,9 +186,9 @@ async function processOneEvent(eventId) {
     const eventPath = path.join(DATA_FOLDER, 'events', eventId)
     const txtFileNames = readdirSync(eventPath).filter(item => /\.txt$/.test(item))
 
-    const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM pick WHERE eventId = $eventId 
+    const allSources = await executeSelectSome(`SELECT draftlogSource AS source FROM entryExtra WHERE eventId = $eventId 
         UNION ALL 
-        SELECT decklistSource AS source FROM pick WHERE eventId = $eventId`,
+        SELECT decklistSource AS source FROM entryExtra WHERE eventId = $eventId`,
         { $eventId: eventId },
         'source'
     )
@@ -199,7 +199,9 @@ async function processOneEvent(eventId) {
     if (newLogFiles.length > 0) {
         console.log(`Found new log file ${newLogFiles[0]} and ${newLogFiles.length - 1} others in event ${eventId}. Reprocessing picks now...`)
 
+
         await executeRun(`DELETE FROM pick WHERE eventId = $eventId`, { $eventId: eventId })
+        await executeRun(`UPDATE entryExtra SET draftlogSource = null WHERE eventId = $eventId`, { $eventId: eventId })
         const seatings = await executeSelectSome('SELECT playerId FROM entry WHERE eventId = $eventId AND playerId IS NOT NULL ORDER BY seatNum ASC', { $eventId: eventId }, 'playerId')
 
         if(seatings.length != 8) {
@@ -207,6 +209,7 @@ async function processOneEvent(eventId) {
                 console.log(`Invalid seatings found for event ${eventId}. Deleting entries.`)
             }
             await executeRun(`DELETE FROM entry WHERE eventId = $eventId`, {$eventId: eventId})
+            await executeRun(`DELETE FROM entryExtra WHERE eventId = $eventId`, {$eventId: eventId})
         }
 
         for (const filename of logFileNames) {
@@ -239,6 +242,7 @@ async function loadLogAndWrite(filename, eventId, seatings) {
         const fullName = await executeSelectOne('SELECT fullName FROM player WHERE id = $playerId', { $playerId: playerId }, 'fullName')
         if (fullName !== undefined) {
             await executeRun(`INSERT INTO entry(eventId, playerId, seatNum) VALUES ($eventId, $playerId, $seatNum)`, {$eventId: eventId, $playerId: playerId, $seatNum: seatNum})
+            await executeRun(`INSERT INTO entryExtra(eventId, playerId) VALUES ($eventId, $playerId)`, {$eventId: eventId, $playerId: playerId})
             console.log(`Inserting seating for ${fullName} at seat ${seatNum} in event ${eventId}`)
         } else {
             console.log(`Invalid player id ${playerTag} in file ${filename} for event ${eventId}! Not inserting entry, event will not be set up correctly.`)
@@ -250,11 +254,10 @@ async function loadLogAndWrite(filename, eventId, seatings) {
             ...logRow,
             playerId,
             eventId,
-            draftlogSource: filename
         }
     })
-
-    return executeInsertData('pick', uploadTable)
+    await executeInsertData('pick', uploadTable)
+    await executeRun('UPDATE entryExtra SET draftlogSource = $draftlogSource, draftlogURL = null WHERE playerId = $playerId AND eventId = $eventId', {$playerId: playerId, $eventId: eventId, $draftlogSource: filename})
 }
 
 async function loadDeckAndWrite(filename, eventId) {
@@ -302,46 +305,57 @@ async function loadDeckAndWrite(filename, eventId) {
             }
         )
         if (matchingRow) {
-            await executeRun(`UPDATE pick SET isMain = $isMain, decklistSource = $decklistSource 
+            await executeRun(`UPDATE pick SET isMain = $isMain
                 WHERE playerId = $playerId AND eventId = $eventId AND pickId = $pickId AND isMain IS NULL`,
                 {
                     $isMain: cardRow.isMain,
                     $playerId: playerId,
                     $eventId: eventId,
-                    $pickId: matchingRow.pickId,
-                    $decklistSource: filename
+                    $pickId: matchingRow.pickId
                 }
-            )
+            )   
         } else {
             const pickId = await executeSelectOne(`SELECT max(pickId)+1 AS newId FROM pick WHERE playerId = $playerId AND eventId = $eventId`,
                 { $playerId: playerId, $eventId: eventId }, 'newId') || 1
             await executeRun(
-                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName, decklistSource) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName, $decklistSource)`,
-                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName, $decklistSource: filename }
+                `INSERT INTO pick(playerId, eventId, pickId, isMain, cardName) VALUES ($playerId, $eventId, $pickId, $isMain, $cardName)`,
+                { $playerId: playerId, $eventId: eventId, $pickId: pickId, $isMain: cardRow.isMain, $cardName: cardRow.cardName }
             )
         }
+        await executeRun(`UPDATE entryExtra SET decklistSource = $decklistSource 
+            WHERE playerId = $playerId AND eventId = $eventId`,
+            {
+                $playerId: playerId,
+                $eventId: eventId,
+                $decklistSource: filename
+            }
+        )
 
     }
     return
 }
 
 function processLog(draftLog) {
+    console.log('here')
     const selectionRegex = /--> (.*)/
-    const playerRegex = /Player ID: (.*)/
+    const playerRegex = /Event #: (.*)@(.*)/
     draftLog = draftLog.replace(/\r/g, '')
     const segments = draftLog.split('\n\n').filter((segment) => selectionRegex.test(segment))
-
+    
     if (segments.length !== 46) {
         throw 'Invalid draftlog, missing correct number of "-->" indicators or improperly separated.'
     }
+
     const playerLines = segments[0].split('\n').filter(line => /(^--> |^    )[a-zA-z]/.test(line))
     if (playerLines.length != 8) {
         throw 'Invalid draftlog, header does not have 8 players, or some other error.'
     }
     const seatNum = playerLines.findIndex(line => selectionRegex.test(line)) + 1
-    const playerTag = draftLog.split('\n').find(line => playerRegex.test(line))?.match(playerRegex)?.[1] ||
-        playerLines.find(line => selectionRegex.test(line)).match(selectionRegex)[1]
-
+    console.log('here 2')
+    const playerTag = draftLog.split('\n').find(line => playerRegex.test(line))?.match(playerRegex)?.[1] || playerLines.find(line => selectionRegex.test(line)).match(selectionRegex)[1]
+    console.log(draftLog.split('\n'))
+    console.log(draftLog.split('\n').find(line => playerRegex.test(line)))
+    
     const pickSegments = segments.slice(1, 46)
 
     const logRows = pickSegments.map((segment, index) => {

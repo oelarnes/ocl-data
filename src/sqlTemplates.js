@@ -1,6 +1,8 @@
 export const dropPlayerTable = 'DROP TABLE IF EXISTS player;';
 export const dropEventTable = 'DROP TABLE IF EXISTS event;';
+export const dropEventExtraTable = `DROP TABLE IF EXISTS eventExtra;`;
 export const dropEntryTable = 'DROP TABLE IF EXISTS entry;';
+export const dropEntryExtraTable = `DROP TABLE IF EXISTS entryExtra;`;
 export const dropPairingTable = 'DROP TABLE IF EXISTS pairing;';
 export const dropPickTable = 'DROP TABLE IF EXISTS pick;';
 export const dropCubeTable = `DROP TABLE IF EXISTS cube;`;
@@ -11,10 +13,10 @@ CREATE TABLE IF NOT EXISTS player(
     id TEXT PRIMARY KEY,
     fullName TEXT UNIQUE,
     discordHandle TEXT,
-    discordIdExt TEXT,
     timeZone TEXT,
     pronouns TEXT
-);`;
+);
+`
 export const createEventTable = `
 CREATE TABLE IF NOT EXISTS event(
     id TEXT PRIMARY KEY,
@@ -22,9 +24,15 @@ CREATE TABLE IF NOT EXISTS event(
     draftDate TEXT,
     completedDate TEXT, 
     cubeId TEXT, 
-    season TEXT,
+    season TEXT
+);
+`
+export const createEventExtraTable = `
+CREATE TABLE IF NOT EXISTS eventExtra(
+    id TEXT PRIMARY KEY,
     standingsJpgURL TEXT
-);`;
+);
+`
 export const createEntryTable = ` 
 CREATE TABLE IF NOT EXISTS entry(
     playerId TEXT,
@@ -36,7 +44,18 @@ CREATE TABLE IF NOT EXISTS entry(
     qpsAwarded INTEGER,
     cpsAwarded INTEGER,
     PRIMARY KEY(playerId, eventId)
-);`;
+);
+`
+export const createEntryExtraTable = `
+CREATE TABLE IF NOT EXISTS entryExtra(
+    playerId TEXT,
+    eventId TEXT,
+    decklistSource TEXT,
+    draftlogSource TEXT,
+    draftlogURL TEXT,
+    PRIMARY KEY(playerId, eventId)
+);
+`
 export const createPairingTable = `
 CREATE TABLE IF NOT EXISTS pairing(
     eventId TEXT,
@@ -52,7 +71,7 @@ CREATE TABLE IF NOT EXISTS pairing(
     completedDate TEXT,
     PRIMARY KEY(eventId, roundNum, tableNum)
 );
-`;
+`
 export const createPickTable = `
 CREATE TABLE IF NOT EXISTS pick(
     playerId TEXT,
@@ -63,10 +82,9 @@ CREATE TABLE IF NOT EXISTS pick(
     cardName TEXT, 
     otherCardNamesString TEXT,
     isMain INT,
-    decklistSource TEXT,
-    draftlogSource TEXT,
     PRIMARY KEY(playerId, eventId, pickId)
-);`;
+);
+`;
 export const createCubeTable = `
 CREATE TABLE IF NOT EXISTS cube(
     id TEXT PRIMARY KEY,
