@@ -198,9 +198,9 @@ const resolvers = {
             return executeSelectOne(sql.selectEventWinner, { $eventId: event.id })
         },
         async standingsJpgURL(event) {
-            const jpgURL = executeSelectOne(`SELECT standingsJpgURL FROM eventExtra WHERE id = $eventId`, {$eventId: event.id}, 'standingsJpgURL')
+            const jpgURL = await executeSelectOne(`SELECT standingsJpgURL FROM eventExtra WHERE id = $eventId`, {$eventId: event.id}, 'standingsJpgURL')
             if (jpgURL != null) {
-                return jrgURL
+                return jpgURL
             }
             
             const today = new Date().toISOString()
