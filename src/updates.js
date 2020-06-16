@@ -336,7 +336,6 @@ async function loadDeckAndWrite(filename, eventId) {
 }
 
 function processLog(draftLog) {
-    console.log('here')
     const selectionRegex = /--> (.*)/
     const playerRegex = /Event #: (.*)@(.*)/
     draftLog = draftLog.replace(/\r/g, '')
@@ -351,10 +350,7 @@ function processLog(draftLog) {
         throw 'Invalid draftlog, header does not have 8 players, or some other error.'
     }
     const seatNum = playerLines.findIndex(line => selectionRegex.test(line)) + 1
-    console.log('here 2')
     const playerTag = draftLog.split('\n').find(line => playerRegex.test(line))?.match(playerRegex)?.[1] || playerLines.find(line => selectionRegex.test(line)).match(selectionRegex)[1]
-    console.log(draftLog.split('\n'))
-    console.log(draftLog.split('\n').find(line => playerRegex.test(line)))
     
     const pickSegments = segments.slice(1, 46)
 
