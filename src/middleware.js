@@ -208,7 +208,7 @@ const resolvers = {
             const htciConfig = getFreshDbConfig().htciapi
             const latestEventId = await executeSelectOne(`SELECT id FROM event WHERE completedDate < $today ORDER BY completedDate DESC`, {$today: today}, 'id')
 
-            if (latestEventId !== event.id || config == undefined) {
+            if (latestEventId !== event.id || htciConfig == undefined) {
                 return null
             }
         
