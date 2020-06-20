@@ -127,6 +127,7 @@ type MTGOCard {
     numWishlist: Int
 #    styleClass: String
     isFoil: Boolean
+    tix: Float
     dekRow(num: Int, sideboard: Boolean): String
 #    numAtAccount(oclAccount: String): Int
     card: Card
@@ -171,7 +172,7 @@ type Query {
     standings(season: String, howMany: Int, after: Int): [Standing]
     card(name: String): Card
     cubeByType(cubeType: CubeType): Cube
-    ownedDekString(mainCardNames: [String], sideboardCardNames: [String]): String
+    dekString(mainCardNames: [String], sideboardCardNames: [String], wishlistOnly: Boolean): String
     MTGOCards(wishlist: Boolean, owned: Boolean): [MTGOCard]
 }
 

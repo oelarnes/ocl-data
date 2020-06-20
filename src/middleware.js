@@ -97,9 +97,9 @@ const resolvers = {
         cubeByType(_, { cubeType }) {
             return executeSelectOne(sql.selectCubesByType, { $cubeType: cubeType })
         },
-        async ownedDekString(_, { mainCardNames=[], sideboardCardNames=[] }) {
-            const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name })))
-            const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({name})))
+        async dekString(_, { mainCardNames=[], sideboardCardNames=[], wishlistOnly=false }) {
+            const mainCards = await Promise.all(mainCardNames.map(name => resolvers.Card.ownedMTGOCard({ name },  { wishlistOnly })))
+            const sideboardCards = await Promise.all(sideboardCardNames.map(name => resolvers.Card.ownedMTGOCard({ name }, { wishlistOnly })))
             
             return dekStringFromRows(mainCards.map(
                 card => resolvers.MTGOCard.dekRow(card, {num:1, sideboard: false})
@@ -130,7 +130,7 @@ const resolvers = {
             addEventToConfig(eventId, sheetId);
             await syncData();
             return true
-        }
+        },
     },
     Player: {
         eventEntries(
@@ -515,8 +515,11 @@ background-color: rgb(64,68,75);
         cubesIn(card, { asOf = new Date().toISOString() }) {
             return executeSelectSome(sql.selectCubesForCard, { $cardName: card.name, $asOf: asOf })
         },
-        async ownedMTGOCard(card) {
-            const ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: card.name })
+        async ownedMTGOCard(card, {wishlistOnly=false}) {
+            let ownedCard
+            if (!wishlistOnly) {
+                const ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: card.name })
+            }
             if (ownedCard === undefined) {
                 return executeSelectOne(sql.selectWishlistCardByName, { $cardName: card.name })
             }

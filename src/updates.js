@@ -132,7 +132,7 @@ async function syncData() {
     }
     
     await importDekFiles()
-
+    console.log('Sync complete')
     return
 }
 
@@ -140,7 +140,7 @@ async function dataSyncLoop(cadence = 1000 * 60 * 5) {
     try {
         await syncData()
 
-        console.log('Updates complete, scheduling next update for %s...', new Date(new Date().getTime() + cadence))
+        console.log('Scheduling next update for %s...', new Date(new Date().getTime() + cadence))
         setTimeout(dataSyncLoop, cadence)
     } catch (err) {
         console.log('Some error, terminating OCL data sync loop. Probably your config file is missing or incorrectly set up.')
