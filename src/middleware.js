@@ -318,15 +318,19 @@ background-color: rgb(64,68,75);
         pool(entry) {
             return executeSelectSome(sql.selectPicksForEntry, { $eventId: entry.eventId, $playerId: entry.playerId })
         },
-        main(entry) {
-            return entry.pool.filter(row => row.isMain || row.isMain === null)
+        async main(entry) {
+            const pool = await resolvers.Entry.pool(entry)
+            return pool.filter(row => row.isMain || row.isMain === null)
         },
-        sideboard(entry) {
-            return entry.pool.filter(row => row.isMain === 0)
+        async sideboard(entry) {
+            const pool = await resolvers.Entry.pool(entry)
+            return pool.filter(row => row.isMain === 0)
         },
         async ownedDekString(entry) {
-            const mainMTGOCards = await Promise.all(resolvers.Entry.main(entry).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
-            const sbMTGOCards = await Promise.all(resolvers.Entry.sideboard(entry).map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick))))
+            const main = await resolvers.Entry.main(entry)
+            const sideboard = await resolvers.Entry.sideboard(entry)
+            const mainMTGOCards = await Promise.all(main.map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick), {})))
+            const sbMTGOCards = await Promise.all(sideboard.map(pick => resolvers.Card.ownedMTGOCard(resolvers.Pick.card(pick), {})))
 
             const mainRows = mainMTGOCards.map(
                 card => resolvers.MTGOCard.dekRow(card, { num: 1, sideboard: false })
@@ -518,7 +522,7 @@ background-color: rgb(64,68,75);
         async ownedMTGOCard(card, {wishlistOnly=false}) {
             let ownedCard
             if (!wishlistOnly) {
-                const ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: card.name })
+                ownedCard = await executeSelectOne(sql.selectOwnedMTGOCardByName, { $cardName: card.name })
             }
             if (ownedCard === undefined) {
                 return executeSelectOne(sql.selectWishlistCardByName, { $cardName: card.name })
